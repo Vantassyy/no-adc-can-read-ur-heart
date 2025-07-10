@@ -1,0 +1,1204 @@
+   1              		.cpu cortex-m7
+   2              		.arch armv7e-m
+   3              		.fpu fpv5-d16
+   4              		.eabi_attribute 28, 1
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 6
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.file	"navigation.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.bss.g_steering_output,"aw",%nobits
+  19              		.align	2
+  22              	g_steering_output:
+  23 0000 00000000 		.space	4
+  24              		.section	.text.find_lookahead_point,"ax",%progbits
+  25              		.align	1
+  26              		.p2align 4,,15
+  27              		.syntax unified
+  28              		.thumb
+  29              		.thumb_func
+  31              	find_lookahead_point:
+  32              	.LFB482:
+  33              		.file 1 "user_code/navigation.c"
+   1:user_code/navigation.c **** /*
+   2:user_code/navigation.c ****  * navigation.c
+   3:user_code/navigation.c ****  *
+   4:user_code/navigation.c ****  * [文件说明]
+   5:user_code/navigation.c ****  * 本文件实现了智能循迹小车的核心导航算法。
+   6:user_code/navigation.c ****  *
+   7:user_code/navigation.c ****  * [版本说明]
+   8:user_code/navigation.c ****  * AI 优化建议版 V3.1 - Dynamic Pure Pursuit
+   9:user_code/navigation.c ****  * - 核心算法: 使用Pure Pursuit（纯跟踪）算法，以获得更平滑的弯道轨迹。
+  10:user_code/navigation.c ****  * - 核心优化: 实现动态前瞻距离(Ld)，Ld会根据车速自动调整，以兼顾高速�
+  11:user_code/navigation.c ****  * - 鲁棒性设计: 包含任务完成、RTK信号失效的停车保护，并对动态Ld进行了
+  12:user_code/navigation.c ****  */
+  13:user_code/navigation.c **** 
+  14:user_code/navigation.c **** // 包含所有必要的头文件
+  15:user_code/navigation.c **** #include "navigation.h"      // 自身模块的API声明
+  16:user_code/navigation.c **** #include "bsp_rtk.h"         // RTK定位模块的接口
+  17:user_code/navigation.c **** #include "path_manager.h"    // 路径管理模块的接口
+  18:user_code/navigation.c **** #include "motion_control.h"  // 运动控制模块的接口
+  19:user_code/navigation.c **** #include "speed_control.h"   // 速度闭环控制模块的接口
+  20:user_code/navigation.c **** #include <math.h>            // C语言标准数学库
+  21:user_code/navigation.c **** #include <stdio.h>           // C语言标准输入输出库
+  22:user_code/navigation.c **** 
+  23:user_code/navigation.c **** // ====================================================================
+  24:user_code/navigation.c **** // 内部宏定义与配置参数
+  25:user_code/navigation.c **** // ====================================================================
+  26:user_code/navigation.c **** 
+  27:user_code/navigation.c **** // --- Pure Pursuit 算法核心参数 ---
+  28:user_code/navigation.c **** // [!!!请务必测量并修改!!!] 小车的前后轮轴距，单位：米。这是算法必需的
+  29:user_code/navigation.c **** #define VEHICLE_WHEELBASE   (0.22f)
+  30:user_code/navigation.c **** 
+  31:user_code/navigation.c **** // --- 动态前瞻距离 (Ld) 的配置参数 ---
+  32:user_code/navigation.c **** // [核心调试参数#1] 速度增益系数 k (单位:秒)。表示预瞄前方多少秒路程的�
+  33:user_code/navigation.c **** #define LD_GAIN_K           (0.0f)//临时为0
+  34:user_code/navigation.c **** // [核心调试参数#2] 基础前瞻距离 (单位:米)。小车在极低速时的最小预瞄距
+  35:user_code/navigation.c **** #define LD_BASE             (0.8f)
+  36:user_code/navigation.c **** // [安全保护] 对计算出的Ld进行限幅，增加鲁棒性
+  37:user_code/navigation.c **** #define LD_MAX              (1.0f) // 最大前瞻距离，防止高速时看得太远导致切弯�
+  38:user_code/navigation.c **** #define LD_MIN              (0.25f)// 最小前瞻距离，防止低速时Ld过小导致震荡
+  39:user_code/navigation.c **** 
+  40:user_code/navigation.c **** // ---- 速度规划参数 ----
+  41:user_code/navigation.c **** #define MAX_SPEED_CMPS      (50.0f) // 可以适当提高速度上限来测试动态Ld的效果
+  42:user_code/navigation.c **** #define MIN_SPEED_CMPS      (20.0f)
+  43:user_code/navigation.c **** #define SPEED_P_GAIN        (1.5f)  // 转向角越大，速度降低越多的比例系数
+  44:user_code/navigation.c **** 
+  45:user_code/navigation.c **** // ---- 舵机物理限制 ----
+  46:user_code/navigation.c **** #define SERVO_ANGLE_MAX     (30.0f)
+  47:user_code/navigation.c **** #define SERVO_ANGLE_MIN     (-30.0f)
+  48:user_code/navigation.c **** 
+  49:user_code/navigation.c **** // ====================================================================
+  50:user_code/navigation.c **** // 内部变量定义
+  51:user_code/navigation.c **** // ====================================================================
+  52:user_code/navigation.c **** static float g_steering_output = 0.0f; // 存储最终计算出的舵机转向角度
+  53:user_code/navigation.c **** 
+  54:user_code/navigation.c **** // ====================================================================
+  55:user_code/navigation.c **** // 内部辅助函数定义
+  56:user_code/navigation.c **** // ====================================================================
+  57:user_code/navigation.c **** 
+  58:user_code/navigation.c **** /**
+  59:user_code/navigation.c ****  * @brief  在路径段(a, b)上寻找距离车辆(p)为Ld的预瞄点。
+  60:user_code/navigation.c ****  * @note   该函数通过解一元二次方程来寻找以车辆为圆心、Ld为半径的圆与�
+  61:user_code/navigation.c ****  * @param  p: 车辆当前位置
+  62:user_code/navigation.c ****  * @param  a: 路径段起点
+  63:user_code/navigation.c ****  * @param  b: 路径段终点
+  64:user_code/navigation.c ****  * @param  ld: 前瞻距离 (Lookahead Distance)
+  65:user_code/navigation.c ****  * @param  lookahead_pt: (输出参数) 找到的预瞄点将存放在此指针指向的地址
+  66:user_code/navigation.c ****  * @return bool: 如果成功找到一个在线段内的预瞄点，返回true；否则返回false�
+  67:user_code/navigation.c ****  */
+  68:user_code/navigation.c **** static bool find_lookahead_point(Point_t p, Point_t a, Point_t b, float ld, Point_t* lookahead_pt)
+  69:user_code/navigation.c **** {
+  34              		.loc 1 69 1
+  35              		.cfi_startproc
+  36              		@ args = 0, pretend = 0, frame = 136
+  37              		@ frame_needed = 0, uses_anonymous_args = 0
+  38 0000 00B5     		push	{lr}
+  39              		.cfi_def_cfa_offset 4
+  40              		.cfi_offset 14, -4
+  41 0002 A3B0     		sub	sp, sp, #140
+  42              		.cfi_def_cfa_offset 144
+  43 0004 B0EE457B 		vmov.f64	d7, d5
+  44 0008 8DED016A 		vstr.32	s12, [sp, #4]
+  45 000c 0090     		str	r0, [sp]
+  46 000e 8DED0A0B 		vstr.64	d0, [sp, #40]
+  47 0012 8DED0C1B 		vstr.64	d1, [sp, #48]
+  48 0016 8DED062B 		vstr.64	d2, [sp, #24]
+  49 001a 8DED083B 		vstr.64	d3, [sp, #32]
+  50 001e 8DED024B 		vstr.64	d4, [sp, #8]
+  51 0022 8DED047B 		vstr.64	d7, [sp, #16]
+  70:user_code/navigation.c ****     Point_t vec_ab = {b.x - a.x, b.y - a.y};
+  52              		.loc 1 70 24
+  53 0026 9DED026B 		vldr.64	d6, [sp, #8]
+  54              		.loc 1 70 30
+  55 002a 9DED067B 		vldr.64	d7, [sp, #24]
+  56              		.loc 1 70 27
+  57 002e 36EE477B 		vsub.f64	d7, d6, d7
+  58              		.loc 1 70 13
+  59 0032 8DED127B 		vstr.64	d7, [sp, #72]
+  60              		.loc 1 70 35
+  61 0036 9DED046B 		vldr.64	d6, [sp, #16]
+  62              		.loc 1 70 41
+  63 003a 9DED087B 		vldr.64	d7, [sp, #32]
+  64              		.loc 1 70 38
+  65 003e 36EE477B 		vsub.f64	d7, d6, d7
+  66              		.loc 1 70 13
+  67 0042 8DED147B 		vstr.64	d7, [sp, #80]
+  71:user_code/navigation.c ****     Point_t vec_ap = {p.x - a.x, p.y - a.y};
+  68              		.loc 1 71 24
+  69 0046 9DED0A6B 		vldr.64	d6, [sp, #40]
+  70              		.loc 1 71 30
+  71 004a 9DED067B 		vldr.64	d7, [sp, #24]
+  72              		.loc 1 71 27
+  73 004e 36EE477B 		vsub.f64	d7, d6, d7
+  74              		.loc 1 71 13
+  75 0052 8DED0E7B 		vstr.64	d7, [sp, #56]
+  76              		.loc 1 71 35
+  77 0056 9DED0C6B 		vldr.64	d6, [sp, #48]
+  78              		.loc 1 71 41
+  79 005a 9DED087B 		vldr.64	d7, [sp, #32]
+  80              		.loc 1 71 38
+  81 005e 36EE477B 		vsub.f64	d7, d6, d7
+  82              		.loc 1 71 13
+  83 0062 8DED107B 		vstr.64	d7, [sp, #64]
+  72:user_code/navigation.c **** 
+  73:user_code/navigation.c ****     // 解一元二次方程 a*t^2 + b*t + c = 0, 其中t是预瞄点在向量AB上的比例系数
+  74:user_code/navigation.c ****     double A = vec_ab.x * vec_ab.x + vec_ab.y * vec_ab.y;
+  84              		.loc 1 74 22
+  85 0066 9DED126B 		vldr.64	d6, [sp, #72]
+  86              		.loc 1 74 33
+  87 006a 9DED127B 		vldr.64	d7, [sp, #72]
+  88              		.loc 1 74 25
+  89 006e 26EE076B 		vmul.f64	d6, d6, d7
+  90              		.loc 1 74 44
+  91 0072 9DED145B 		vldr.64	d5, [sp, #80]
+  92              		.loc 1 74 55
+  93 0076 9DED147B 		vldr.64	d7, [sp, #80]
+  94              		.loc 1 74 47
+  95 007a 25EE077B 		vmul.f64	d7, d5, d7
+  96              		.loc 1 74 12
+  97 007e 36EE077B 		vadd.f64	d7, d6, d7
+  98 0082 8DED207B 		vstr.64	d7, [sp, #128]
+  75:user_code/navigation.c ****     double B = 2 * (vec_ap.x * vec_ab.x + vec_ap.y * vec_ab.y);
+  99              		.loc 1 75 27
+ 100 0086 9DED0E6B 		vldr.64	d6, [sp, #56]
+ 101              		.loc 1 75 38
+ 102 008a 9DED127B 		vldr.64	d7, [sp, #72]
+ 103              		.loc 1 75 30
+ 104 008e 26EE076B 		vmul.f64	d6, d6, d7
+ 105              		.loc 1 75 49
+ 106 0092 9DED105B 		vldr.64	d5, [sp, #64]
+ 107              		.loc 1 75 60
+ 108 0096 9DED147B 		vldr.64	d7, [sp, #80]
+ 109              		.loc 1 75 52
+ 110 009a 25EE077B 		vmul.f64	d7, d5, d7
+ 111              		.loc 1 75 41
+ 112 009e 36EE077B 		vadd.f64	d7, d6, d7
+ 113              		.loc 1 75 12
+ 114 00a2 37EE077B 		vadd.f64	d7, d7, d7
+ 115 00a6 8DED1E7B 		vstr.64	d7, [sp, #120]
+  76:user_code/navigation.c ****     double C = vec_ap.x * vec_ap.x + vec_ap.y * vec_ap.y - ld * ld;
+ 116              		.loc 1 76 22
+ 117 00aa 9DED0E6B 		vldr.64	d6, [sp, #56]
+ 118              		.loc 1 76 33
+ 119 00ae 9DED0E7B 		vldr.64	d7, [sp, #56]
+ 120              		.loc 1 76 25
+ 121 00b2 26EE076B 		vmul.f64	d6, d6, d7
+ 122              		.loc 1 76 44
+ 123 00b6 9DED105B 		vldr.64	d5, [sp, #64]
+ 124              		.loc 1 76 55
+ 125 00ba 9DED107B 		vldr.64	d7, [sp, #64]
+ 126              		.loc 1 76 47
+ 127 00be 25EE077B 		vmul.f64	d7, d5, d7
+ 128              		.loc 1 76 36
+ 129 00c2 36EE076B 		vadd.f64	d6, d6, d7
+ 130              		.loc 1 76 63
+ 131 00c6 DDED017A 		vldr.32	s15, [sp, #4]
+ 132 00ca 67EEA77A 		vmul.f32	s15, s15, s15
+ 133 00ce B7EEE77A 		vcvt.f64.f32	d7, s15
+ 134              		.loc 1 76 12
+ 135 00d2 36EE477B 		vsub.f64	d7, d6, d7
+ 136 00d6 8DED1C7B 		vstr.64	d7, [sp, #112]
+  77:user_code/navigation.c ****     double discriminant = B * B - 4 * A * C;
+ 137              		.loc 1 77 29
+ 138 00da 9DED1E7B 		vldr.64	d7, [sp, #120]
+ 139 00de 27EE076B 		vmul.f64	d6, d7, d7
+ 140              		.loc 1 77 37
+ 141 00e2 9DED207B 		vldr.64	d7, [sp, #128]
+ 142 00e6 B1EE005B 		vmov.f64	d5, #4.0e+0
+ 143 00ea 27EE055B 		vmul.f64	d5, d7, d5
+ 144              		.loc 1 77 41
+ 145 00ee 9DED1C7B 		vldr.64	d7, [sp, #112]
+ 146 00f2 25EE077B 		vmul.f64	d7, d5, d7
+ 147              		.loc 1 77 12
+ 148 00f6 36EE477B 		vsub.f64	d7, d6, d7
+ 149 00fa 8DED1A7B 		vstr.64	d7, [sp, #104]
+  78:user_code/navigation.c **** 
+  79:user_code/navigation.c ****     if (discriminant < 0) {
+ 150              		.loc 1 79 8
+ 151 00fe 9DED1A7B 		vldr.64	d7, [sp, #104]
+ 152 0102 B5EEC07B 		vcmpe.f64	d7, #0
+ 153 0106 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 154 010a 01D5     		bpl	.L17
+  80:user_code/navigation.c ****         return false; // 圆和直线没有交点
+ 155              		.loc 1 80 16
+ 156 010c 0023     		movs	r3, #0
+ 157 010e 7CE0     		b	.L11
+ 158              	.L17:
+  81:user_code/navigation.c ****     }
+  82:user_code/navigation.c **** 
+  83:user_code/navigation.c ****     discriminant = sqrt(discriminant);
+ 159              		.loc 1 83 20
+ 160 0110 9DED1A0B 		vldr.64	d0, [sp, #104]
+ 161 0114 FFF7FEFF 		bl	sqrt
+ 162 0118 8DED1A0B 		vstr.64	d0, [sp, #104]
+  84:user_code/navigation.c ****     double t1 = (-B + discriminant) / (2 * A);
+ 163              		.loc 1 84 21
+ 164 011c 9DED1A6B 		vldr.64	d6, [sp, #104]
+ 165 0120 9DED1E7B 		vldr.64	d7, [sp, #120]
+ 166 0124 36EE475B 		vsub.f64	d5, d6, d7
+ 167              		.loc 1 84 42
+ 168 0128 9DED207B 		vldr.64	d7, [sp, #128]
+ 169 012c 37EE076B 		vadd.f64	d6, d7, d7
+ 170              		.loc 1 84 12
+ 171 0130 85EE067B 		vdiv.f64	d7, d5, d6
+ 172 0134 8DED187B 		vstr.64	d7, [sp, #96]
+  85:user_code/navigation.c ****     double t2 = (-B - discriminant) / (2 * A);
+ 173              		.loc 1 85 18
+ 174 0138 9DED1E7B 		vldr.64	d7, [sp, #120]
+ 175 013c B1EE476B 		vneg.f64	d6, d7
+ 176              		.loc 1 85 21
+ 177 0140 9DED1A7B 		vldr.64	d7, [sp, #104]
+ 178 0144 36EE475B 		vsub.f64	d5, d6, d7
+ 179              		.loc 1 85 42
+ 180 0148 9DED207B 		vldr.64	d7, [sp, #128]
+ 181 014c 37EE076B 		vadd.f64	d6, d7, d7
+ 182              		.loc 1 85 12
+ 183 0150 85EE067B 		vdiv.f64	d7, d5, d6
+ 184 0154 8DED167B 		vstr.64	d7, [sp, #88]
+  86:user_code/navigation.c **** 
+  87:user_code/navigation.c ****     // 优先选择在车辆前进方向上的、且在线段内的交点 (0 <= t <= 1)
+  88:user_code/navigation.c ****     if (t1 >= 0 && t1 <= 1) {
+ 185              		.loc 1 88 8
+ 186 0158 9DED187B 		vldr.64	d7, [sp, #96]
+ 187 015c B5EEC07B 		vcmpe.f64	d7, #0
+ 188 0160 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 189 0164 24DB     		blt	.L5
+ 190              		.loc 1 88 17 discriminator 1
+ 191 0166 9DED187B 		vldr.64	d7, [sp, #96]
+ 192 016a B7EE006B 		vmov.f64	d6, #1.0e+0
+ 193 016e B4EEC67B 		vcmpe.f64	d7, d6
+ 194 0172 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 195 0176 1BD8     		bhi	.L5
+  89:user_code/navigation.c ****         lookahead_pt->x = a.x + t1 * vec_ab.x;
+ 196              		.loc 1 89 28
+ 197 0178 9DED066B 		vldr.64	d6, [sp, #24]
+ 198              		.loc 1 89 44
+ 199 017c 9DED125B 		vldr.64	d5, [sp, #72]
+ 200              		.loc 1 89 36
+ 201 0180 9DED187B 		vldr.64	d7, [sp, #96]
+ 202 0184 25EE077B 		vmul.f64	d7, d5, d7
+ 203              		.loc 1 89 31
+ 204 0188 36EE077B 		vadd.f64	d7, d6, d7
+ 205              		.loc 1 89 25
+ 206 018c 009B     		ldr	r3, [sp]
+ 207 018e 83ED007B 		vstr.64	d7, [r3]
+  90:user_code/navigation.c ****         lookahead_pt->y = a.y + t1 * vec_ab.y;
+ 208              		.loc 1 90 28
+ 209 0192 9DED086B 		vldr.64	d6, [sp, #32]
+ 210              		.loc 1 90 44
+ 211 0196 9DED145B 		vldr.64	d5, [sp, #80]
+ 212              		.loc 1 90 36
+ 213 019a 9DED187B 		vldr.64	d7, [sp, #96]
+ 214 019e 25EE077B 		vmul.f64	d7, d5, d7
+ 215              		.loc 1 90 31
+ 216 01a2 36EE077B 		vadd.f64	d7, d6, d7
+ 217              		.loc 1 90 25
+ 218 01a6 009B     		ldr	r3, [sp]
+ 219 01a8 83ED027B 		vstr.64	d7, [r3, #8]
+  91:user_code/navigation.c ****         return true;
+ 220              		.loc 1 91 16
+ 221 01ac 0123     		movs	r3, #1
+ 222 01ae 2CE0     		b	.L11
+ 223              	.L5:
+  92:user_code/navigation.c ****     }
+  93:user_code/navigation.c ****     if (t2 >= 0 && t2 <= 1) {
+ 224              		.loc 1 93 8
+ 225 01b0 9DED167B 		vldr.64	d7, [sp, #88]
+ 226 01b4 B5EEC07B 		vcmpe.f64	d7, #0
+ 227 01b8 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 228 01bc 24DB     		blt	.L8
+ 229              		.loc 1 93 17 discriminator 1
+ 230 01be 9DED167B 		vldr.64	d7, [sp, #88]
+ 231 01c2 B7EE006B 		vmov.f64	d6, #1.0e+0
+ 232 01c6 B4EEC67B 		vcmpe.f64	d7, d6
+ 233 01ca F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 234 01ce 1BD8     		bhi	.L8
+  94:user_code/navigation.c ****         lookahead_pt->x = a.x + t2 * vec_ab.x;
+ 235              		.loc 1 94 28
+ 236 01d0 9DED066B 		vldr.64	d6, [sp, #24]
+ 237              		.loc 1 94 44
+ 238 01d4 9DED125B 		vldr.64	d5, [sp, #72]
+ 239              		.loc 1 94 36
+ 240 01d8 9DED167B 		vldr.64	d7, [sp, #88]
+ 241 01dc 25EE077B 		vmul.f64	d7, d5, d7
+ 242              		.loc 1 94 31
+ 243 01e0 36EE077B 		vadd.f64	d7, d6, d7
+ 244              		.loc 1 94 25
+ 245 01e4 009B     		ldr	r3, [sp]
+ 246 01e6 83ED007B 		vstr.64	d7, [r3]
+  95:user_code/navigation.c ****         lookahead_pt->y = a.y + t2 * vec_ab.y;
+ 247              		.loc 1 95 28
+ 248 01ea 9DED086B 		vldr.64	d6, [sp, #32]
+ 249              		.loc 1 95 44
+ 250 01ee 9DED145B 		vldr.64	d5, [sp, #80]
+ 251              		.loc 1 95 36
+ 252 01f2 9DED167B 		vldr.64	d7, [sp, #88]
+ 253 01f6 25EE077B 		vmul.f64	d7, d5, d7
+ 254              		.loc 1 95 31
+ 255 01fa 36EE077B 		vadd.f64	d7, d6, d7
+ 256              		.loc 1 95 25
+ 257 01fe 009B     		ldr	r3, [sp]
+ 258 0200 83ED027B 		vstr.64	d7, [r3, #8]
+  96:user_code/navigation.c ****         return true;
+ 259              		.loc 1 96 16
+ 260 0204 0123     		movs	r3, #1
+ 261 0206 00E0     		b	.L11
+ 262              	.L8:
+  97:user_code/navigation.c ****     }
+  98:user_code/navigation.c **** 
+  99:user_code/navigation.c ****     return false; // 两个交点都不在线段ab上
+ 263              		.loc 1 99 12
+ 264 0208 0023     		movs	r3, #0
+ 265              	.L11:
+ 100:user_code/navigation.c **** }
+ 266              		.loc 1 100 1 discriminator 1
+ 267 020a 1846     		mov	r0, r3
+ 268 020c 23B0     		add	sp, sp, #140
+ 269              		.cfi_def_cfa_offset 4
+ 270              		@ sp needed
+ 271 020e 5DF804FB 		ldr	pc, [sp], #4
+ 272              		.cfi_endproc
+ 273              	.LFE482:
+ 275 0212 00BF     		.section	.text.navigation_init,"ax",%progbits
+ 276              		.align	1
+ 277              		.p2align 4,,15
+ 278              		.global	navigation_init
+ 279              		.syntax unified
+ 280              		.thumb
+ 281              		.thumb_func
+ 283              	navigation_init:
+ 284              	.LFB483:
+ 101:user_code/navigation.c **** 
+ 102:user_code/navigation.c **** // ====================================================================
+ 103:user_code/navigation.c **** // API函数实现
+ 104:user_code/navigation.c **** // ====================================================================
+ 105:user_code/navigation.c **** 
+ 106:user_code/navigation.c **** /**
+ 107:user_code/navigation.c ****  * @brief  导航模块初始化。
+ 108:user_code/navigation.c ****  */
+ 109:user_code/navigation.c **** void navigation_init(void)
+ 110:user_code/navigation.c **** {
+ 285              		.loc 1 110 1
+ 286              		.cfi_startproc
+ 287              		@ args = 0, pretend = 0, frame = 0
+ 288              		@ frame_needed = 0, uses_anonymous_args = 0
+ 289 0000 08B5     		push	{r3, lr}
+ 290              		.cfi_def_cfa_offset 8
+ 291              		.cfi_offset 3, -8
+ 292              		.cfi_offset 14, -4
+ 111:user_code/navigation.c ****     path_manager_init();
+ 293              		.loc 1 111 5
+ 294 0002 FFF7FEFF 		bl	path_manager_init
+ 112:user_code/navigation.c ****     g_steering_output = 0.0f; // 初始化舵机角度为0
+ 295              		.loc 1 112 23
+ 296 0006 034B     		ldr	r3, .L19
+ 297 0008 4FF00002 		mov	r2, #0
+ 298 000c 1A60     		str	r2, [r3]	@ float
+ 113:user_code/navigation.c **** }
+ 299              		.loc 1 113 1
+ 300 000e 00BF     		nop
+ 301 0010 08BD     		pop	{r3, pc}
+ 302              	.L20:
+ 303 0012 00BF     		.align	2
+ 304              	.L19:
+ 305 0014 00000000 		.word	g_steering_output
+ 306              		.cfi_endproc
+ 307              	.LFE483:
+ 309              		.section	.rodata
+ 310              		.align	2
+ 311              	.LC0:
+ 312 0000 4964783A 		.ascii	"Idx:%d, Ld:%.2f, Steer:%.1f, Spd:%.1f\015\012\000"
+ 312      25642C20 
+ 312      4C643A25 
+ 312      2E32662C 
+ 312      20537465 
+ 313              		.section	.text.navigation_run_once,"ax",%progbits
+ 314              		.align	1
+ 315              		.p2align 4,,15
+ 316              		.global	navigation_run_once
+ 317              		.syntax unified
+ 318              		.thumb
+ 319              		.thumb_func
+ 321              	navigation_run_once:
+ 322              	.LFB484:
+ 114:user_code/navigation.c **** 
+ 115:user_code/navigation.c **** /**
+ 116:user_code/navigation.c ****  * @brief  执行一次核心导航与控制计算。
+ 117:user_code/navigation.c ****  */
+ 118:user_code/navigation.c **** void navigation_run_once(const gnss_info_struct* rtk_info)
+ 119:user_code/navigation.c **** {
+ 323              		.loc 1 119 1
+ 324              		.cfi_startproc
+ 325              		@ args = 0, pretend = 0, frame = 160
+ 326              		@ frame_needed = 0, uses_anonymous_args = 0
+ 327 0000 00B5     		push	{lr}
+ 328              		.cfi_def_cfa_offset 4
+ 329              		.cfi_offset 14, -4
+ 330 0002 2DED028B 		vpush.64	{d8}
+ 331              		.cfi_def_cfa_offset 12
+ 332              		.cfi_offset 80, -12
+ 333              		.cfi_offset 81, -8
+ 334 0006 ADB0     		sub	sp, sp, #180
+ 335              		.cfi_def_cfa_offset 192
+ 336 0008 0590     		str	r0, [sp, #20]
+ 120:user_code/navigation.c ****     // --- 第一部分：安全与状态检查 ---
+ 121:user_code/navigation.c ****     if (path_manager_is_mission_completed()) {
+ 337              		.loc 1 121 9
+ 338 000a FFF7FEFF 		bl	path_manager_is_mission_completed
+ 339 000e 0346     		mov	r3, r0
+ 340              		.loc 1 121 8
+ 341 0010 002B     		cmp	r3, #0
+ 342 0012 08D0     		beq	.L22
+ 122:user_code/navigation.c ****         speed_control_set_speed(0);
+ 343              		.loc 1 122 9
+ 344 0014 9FEDA60A 		vldr.32	s0, .L58+56
+ 345 0018 FFF7FEFF 		bl	speed_control_set_speed
+ 123:user_code/navigation.c ****         motion_set_servo_angle(0.0f);
+ 346              		.loc 1 123 9
+ 347 001c 9FEDA40A 		vldr.32	s0, .L58+56
+ 348 0020 FFF7FEFF 		bl	motion_set_servo_angle
+ 124:user_code/navigation.c ****         return;
+ 349              		.loc 1 124 9
+ 350 0024 07E2     		b	.L21
+ 351              	.L22:
+ 125:user_code/navigation.c ****     }
+ 126:user_code/navigation.c ****     if (rtk_info->state == 0) {
+ 352              		.loc 1 126 17
+ 353 0026 059B     		ldr	r3, [sp, #20]
+ 354 0028 1B7A     		ldrb	r3, [r3, #8]	@ zero_extendqisi2
+ 355              		.loc 1 126 8
+ 356 002a 002B     		cmp	r3, #0
+ 357 002c 08D1     		bne	.L24
+ 127:user_code/navigation.c ****         speed_control_set_speed(0);
+ 358              		.loc 1 127 9
+ 359 002e 9FEDA00A 		vldr.32	s0, .L58+56
+ 360 0032 FFF7FEFF 		bl	speed_control_set_speed
+ 128:user_code/navigation.c ****         motion_set_servo_angle(0.0f);
+ 361              		.loc 1 128 9
+ 362 0036 9FED9E0A 		vldr.32	s0, .L58+56
+ 363 003a FFF7FEFF 		bl	motion_set_servo_angle
+ 129:user_code/navigation.c ****         return;
+ 364              		.loc 1 129 9
+ 365 003e FAE1     		b	.L21
+ 366              	.L24:
+ 130:user_code/navigation.c ****     }
+ 131:user_code/navigation.c **** 
+ 132:user_code/navigation.c ****     // --- 第二部分：数据准备与动态Ld计算 ---
+ 133:user_code/navigation.c ****     Point_t current_pos = path_manager_gps_to_local_xy(rtk_info->longitude, rtk_info->latitude);
+ 367              		.loc 1 133 27
+ 368 0040 059B     		ldr	r3, [sp, #20]
+ 369 0042 93ED087B 		vldr.64	d7, [r3, #32]
+ 370 0046 059B     		ldr	r3, [sp, #20]
+ 371 0048 93ED066B 		vldr.64	d6, [r3, #24]
+ 372 004c B0EE461B 		vmov.f64	d1, d6
+ 373 0050 B0EE470B 		vmov.f64	d0, d7
+ 374 0054 FFF7FEFF 		bl	path_manager_gps_to_local_xy
+ 375 0058 B0EE406B 		vmov.f64	d6, d0
+ 376 005c B0EE417B 		vmov.f64	d7, d1
+ 377 0060 8DED126B 		vstr.64	d6, [sp, #72]
+ 378 0064 8DED147B 		vstr.64	d7, [sp, #80]
+ 134:user_code/navigation.c ****     path_manager_update_target_waypoint(current_pos);
+ 379              		.loc 1 134 5
+ 380 0068 9DED126B 		vldr.64	d6, [sp, #72]
+ 381 006c 9DED147B 		vldr.64	d7, [sp, #80]
+ 382 0070 B0EE460B 		vmov.f64	d0, d6
+ 383 0074 B0EE471B 		vmov.f64	d1, d7
+ 384 0078 FFF7FEFF 		bl	path_manager_update_target_waypoint
+ 135:user_code/navigation.c ****     Point_t start_waypoint = path_manager_get_start_waypoint();
+ 385              		.loc 1 135 30
+ 386 007c FFF7FEFF 		bl	path_manager_get_start_waypoint
+ 387 0080 B0EE406B 		vmov.f64	d6, d0
+ 388 0084 B0EE417B 		vmov.f64	d7, d1
+ 389 0088 8DED0E6B 		vstr.64	d6, [sp, #56]
+ 390 008c 8DED107B 		vstr.64	d7, [sp, #64]
+ 136:user_code/navigation.c ****     Point_t target_waypoint = path_manager_get_target_waypoint();
+ 391              		.loc 1 136 31
+ 392 0090 FFF7FEFF 		bl	path_manager_get_target_waypoint
+ 393 0094 B0EE406B 		vmov.f64	d6, d0
+ 394 0098 B0EE417B 		vmov.f64	d7, d1
+ 395 009c 8DED0A6B 		vstr.64	d6, [sp, #40]
+ 396 00a0 8DED0C7B 		vstr.64	d7, [sp, #48]
+ 137:user_code/navigation.c **** 
+ 138:user_code/navigation.c ****     // [依赖确认] 假设 speed_control_get_current_speed() 返回单位为 cm/s 的当前速度
+ 139:user_code/navigation.c ****     float current_speed_mps = speed_control_get_current_speed() / 100.0f; // 转换为 m/s
+ 397              		.loc 1 139 31
+ 398 00a4 FFF7FEFF 		bl	speed_control_get_current_speed
+ 399 00a8 B0EE407A 		vmov.f32	s14, s0
+ 400              		.loc 1 139 11
+ 401 00ac DFED816A 		vldr.32	s13, .L58+60
+ 402 00b0 C7EE267A 		vdiv.f32	s15, s14, s13
+ 403 00b4 CDED237A 		vstr.32	s15, [sp, #140]
+ 140:user_code/navigation.c ****     float lookahead_dist_dynamic = LD_GAIN_K * current_speed_mps + LD_BASE;
+ 404              		.loc 1 140 46
+ 405 00b8 DDED237A 		vldr.32	s15, [sp, #140]
+ 406 00bc 9FED7C7A 		vldr.32	s14, .L58+56
+ 407 00c0 67EE877A 		vmul.f32	s15, s15, s14
+ 408              		.loc 1 140 11
+ 409 00c4 9FED7C7A 		vldr.32	s14, .L58+64
+ 410 00c8 77EE877A 		vadd.f32	s15, s15, s14
+ 411 00cc CDED2B7A 		vstr.32	s15, [sp, #172]
+ 141:user_code/navigation.c **** 
+ 142:user_code/navigation.c ****     // 对计算出的动态Ld进行限幅
+ 143:user_code/navigation.c ****     if (lookahead_dist_dynamic > LD_MAX) lookahead_dist_dynamic = LD_MAX;
+ 412              		.loc 1 143 8
+ 413 00d0 DDED2B7A 		vldr.32	s15, [sp, #172]
+ 414 00d4 B7EE007A 		vmov.f32	s14, #1.0e+0
+ 415 00d8 F4EEC77A 		vcmpe.f32	s15, s14
+ 416 00dc F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 417 00e0 03DD     		ble	.L56
+ 418              		.loc 1 143 65 discriminator 1
+ 419 00e2 4FF07E53 		mov	r3, #1065353216
+ 420 00e6 2B93     		str	r3, [sp, #172]	@ float
+ 421 00e8 0BE0     		b	.L27
+ 422              	.L56:
+ 144:user_code/navigation.c ****     else if (lookahead_dist_dynamic < LD_MIN) lookahead_dist_dynamic = LD_MIN;
+ 423              		.loc 1 144 13
+ 424 00ea DDED2B7A 		vldr.32	s15, [sp, #172]
+ 425 00ee B5EE007A 		vmov.f32	s14, #2.5e-1
+ 426 00f2 F4EEC77A 		vcmpe.f32	s15, s14
+ 427 00f6 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 428 00fa 02D5     		bpl	.L27
+ 429              		.loc 1 144 70 discriminator 1
+ 430 00fc 4FF07A53 		mov	r3, #1048576000
+ 431 0100 2B93     		str	r3, [sp, #172]	@ float
+ 432              	.L27:
+ 145:user_code/navigation.c **** 
+ 146:user_code/navigation.c ****     // --- 第三部分：Pure Pursuit 转向决策 ---
+ 147:user_code/navigation.c ****     Point_t lookahead_point;
+ 148:user_code/navigation.c ****     if (find_lookahead_point(current_pos, start_waypoint, target_waypoint, lookahead_dist_dynamic, 
+ 433              		.loc 1 148 9
+ 434 0102 06AB     		add	r3, sp, #24
+ 435 0104 9DED0A4B 		vldr.64	d4, [sp, #40]
+ 436 0108 9DED0C5B 		vldr.64	d5, [sp, #48]
+ 437 010c 9DED0E2B 		vldr.64	d2, [sp, #56]
+ 438 0110 9DED103B 		vldr.64	d3, [sp, #64]
+ 439 0114 9DED121B 		vldr.64	d1, [sp, #72]
+ 440 0118 9DED147B 		vldr.64	d7, [sp, #80]
+ 441 011c 1846     		mov	r0, r3
+ 442 011e 9DED2B6A 		vldr.32	s12, [sp, #172]
+ 443 0122 B0EE410B 		vmov.f64	d0, d1
+ 444 0126 B0EE471B 		vmov.f64	d1, d7
+ 445 012a FFF7FEFF 		bl	find_lookahead_point
+ 446 012e 0346     		mov	r3, r0
+ 447              		.loc 1 148 8
+ 448 0130 002B     		cmp	r3, #0
+ 449 0132 00F09580 		beq	.L29
+ 450              	.LBB2:
+ 149:user_code/navigation.c ****     {
+ 150:user_code/navigation.c ****         // --- 核心算法修正开始 ---
+ 151:user_code/navigation.c **** 
+ 152:user_code/navigation.c ****         // 1. 获取车辆当前航向角 (Yaw)
+ 153:user_code/navigation.c ****         //    优先使用双天线航向角 (antenna_direction)，因为它在静止时也准确�
+ 154:user_code/navigation.c ****         //    需要检查其状态位 antenna_direction_state。
+ 155:user_code/navigation.c ****         //    航向角的单位是度，参考系是真北。
+ 156:user_code/navigation.c ****         float heading_deg = 0.0f;
+ 451              		.loc 1 156 15
+ 452 0136 4FF00003 		mov	r3, #0
+ 453 013a 2A93     		str	r3, [sp, #168]	@ float
+ 157:user_code/navigation.c ****         if (rtk_info->antenna_direction_state == 1) {
+ 454              		.loc 1 157 21
+ 455 013c 059B     		ldr	r3, [sp, #20]
+ 456 013e 93F83430 		ldrb	r3, [r3, #52]	@ zero_extendqisi2
+ 457              		.loc 1 157 12
+ 458 0142 012B     		cmp	r3, #1
+ 459 0144 03D1     		bne	.L30
+ 158:user_code/navigation.c ****             heading_deg = rtk_info->antenna_direction;
+ 460              		.loc 1 158 25
+ 461 0146 059B     		ldr	r3, [sp, #20]
+ 462 0148 9B6B     		ldr	r3, [r3, #56]	@ float
+ 463 014a 2A93     		str	r3, [sp, #168]	@ float
+ 464 014c 02E0     		b	.L31
+ 465              	.L30:
+ 159:user_code/navigation.c ****         } else {
+ 160:user_code/navigation.c ****             // 如果双天线测向无效，使用备用的地面航向。
+ 161:user_code/navigation.c ****             // 注意：地面航向在低速或静止时可能不准。
+ 162:user_code/navigation.c ****             heading_deg = rtk_info->direction;
+ 466              		.loc 1 162 25
+ 467 014e 059B     		ldr	r3, [sp, #20]
+ 468 0150 1B6B     		ldr	r3, [r3, #48]	@ float
+ 469 0152 2A93     		str	r3, [sp, #168]	@ float
+ 470              	.L31:
+ 163:user_code/navigation.c ****         }
+ 164:user_code/navigation.c **** 
+ 165:user_code/navigation.c ****         // 2. 将航向角从“度”转换为“弧度”。
+ 166:user_code/navigation.c ****         //    我们的局部坐标系Y轴正方向是正北，X轴正方向是正东。
+ 167:user_code/navigation.c ****         //    RTK的航向角以真北为0度，顺时针增加。
+ 168:user_code/navigation.c ****         //    这与数学坐标系（X轴正向为0度，逆时针增加）存在差异。
+ 169:user_code/navigation.c ****         //    转换公式: rad = (90 - deg) * PI / 180
+ 170:user_code/navigation.c ****         double heading_rad = (90.0 - heading_deg) * (3.1415926535 / 180.0);
+ 471              		.loc 1 170 36
+ 472 0154 DDED2A7A 		vldr.32	s15, [sp, #168]
+ 473 0158 B7EEE77A 		vcvt.f64.f32	d7, s15
+ 474 015c 9FED466B 		vldr.64	d6, .L58
+ 475 0160 36EE477B 		vsub.f64	d7, d6, d7
+ 476              		.loc 1 170 16
+ 477 0164 9FED466B 		vldr.64	d6, .L58+8
+ 478 0168 27EE067B 		vmul.f64	d7, d7, d6
+ 479 016c 8DED1C7B 		vstr.64	d7, [sp, #112]
+ 171:user_code/navigation.c ****         // 对结果进行归一化，确保在 -PI 到 PI 之间 (可选但推荐)
+ 172:user_code/navigation.c ****         heading_rad = atan2(sin(heading_rad), cos(heading_rad));
+ 480              		.loc 1 172 23
+ 481 0170 9DED1C0B 		vldr.64	d0, [sp, #112]
+ 482 0174 FFF7FEFF 		bl	sin
+ 483 0178 B0EE408B 		vmov.f64	d8, d0
+ 484 017c 9DED1C0B 		vldr.64	d0, [sp, #112]
+ 485 0180 FFF7FEFF 		bl	cos
+ 486 0184 B0EE407B 		vmov.f64	d7, d0
+ 487 0188 B0EE471B 		vmov.f64	d1, d7
+ 488 018c B0EE480B 		vmov.f64	d0, d8
+ 489 0190 FFF7FEFF 		bl	atan2
+ 490 0194 8DED1C0B 		vstr.64	d0, [sp, #112]
+ 173:user_code/navigation.c **** 
+ 174:user_code/navigation.c ****         // 3. 计算预瞄点在世界坐标系下的方位角
+ 175:user_code/navigation.c ****         double angle_to_lookahead_point_rad = atan2(lookahead_point.y - current_pos.y, lookahead_po
+ 491              		.loc 1 175 68
+ 492 0198 9DED086B 		vldr.64	d6, [sp, #32]
+ 493              		.loc 1 175 84
+ 494 019c 9DED147B 		vldr.64	d7, [sp, #80]
+ 495              		.loc 1 175 47
+ 496 01a0 36EE475B 		vsub.f64	d5, d6, d7
+ 497              		.loc 1 175 103
+ 498 01a4 9DED066B 		vldr.64	d6, [sp, #24]
+ 499              		.loc 1 175 119
+ 500 01a8 9DED127B 		vldr.64	d7, [sp, #72]
+ 501              		.loc 1 175 47
+ 502 01ac 36EE477B 		vsub.f64	d7, d6, d7
+ 503 01b0 B0EE471B 		vmov.f64	d1, d7
+ 504 01b4 B0EE450B 		vmov.f64	d0, d5
+ 505 01b8 FFF7FEFF 		bl	atan2
+ 506 01bc 8DED1A0B 		vstr.64	d0, [sp, #104]
+ 176:user_code/navigation.c **** 
+ 177:user_code/navigation.c ****         // 4. 计算车辆坐标系下的相对夹角 alpha
+ 178:user_code/navigation.c ****         //    alpha = 世界坐标系下预瞄点方向 - 世界坐标系下车头方向
+ 179:user_code/navigation.c ****         double alpha = angle_to_lookahead_point_rad - heading_rad;
+ 507              		.loc 1 179 16
+ 508 01c0 9DED1A6B 		vldr.64	d6, [sp, #104]
+ 509 01c4 9DED1C7B 		vldr.64	d7, [sp, #112]
+ 510 01c8 36EE477B 		vsub.f64	d7, d6, d7
+ 511 01cc 8DED287B 		vstr.64	d7, [sp, #160]
+ 180:user_code/navigation.c ****         // 归一化alpha到 -PI 到 PI 范围
+ 181:user_code/navigation.c ****         if (alpha > 3.1415926535) alpha -= 2 * 3.1415926535;
+ 512              		.loc 1 181 12
+ 513 01d0 9DED287B 		vldr.64	d7, [sp, #160]
+ 514 01d4 9FED2C6B 		vldr.64	d6, .L58+16
+ 515 01d8 B4EEC67B 		vcmpe.f64	d7, d6
+ 516 01dc F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 517 01e0 07DD     		ble	.L32
+ 518              		.loc 1 181 41 discriminator 1
+ 519 01e2 9DED287B 		vldr.64	d7, [sp, #160]
+ 520 01e6 9FED2A6B 		vldr.64	d6, .L58+24
+ 521 01ea 37EE467B 		vsub.f64	d7, d7, d6
+ 522 01ee 8DED287B 		vstr.64	d7, [sp, #160]
+ 523              	.L32:
+ 182:user_code/navigation.c ****         if (alpha < -3.1415926535) alpha += 2 * 3.1415926535;
+ 524              		.loc 1 182 12
+ 525 01f2 9DED287B 		vldr.64	d7, [sp, #160]
+ 526 01f6 9FED286B 		vldr.64	d6, .L58+32
+ 527 01fa B4EEC67B 		vcmpe.f64	d7, d6
+ 528 01fe F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 529 0202 07D5     		bpl	.L34
+ 530              		.loc 1 182 42 discriminator 1
+ 531 0204 9DED287B 		vldr.64	d7, [sp, #160]
+ 532 0208 9FED216B 		vldr.64	d6, .L58+24
+ 533 020c 37EE067B 		vadd.f64	d7, d7, d6
+ 534 0210 8DED287B 		vstr.64	d7, [sp, #160]
+ 535              	.L34:
+ 183:user_code/navigation.c **** 
+ 184:user_code/navigation.c ****         // 5. 应用Pure Pursuit公式计算转向角 (这里使用修正后的alpha)
+ 185:user_code/navigation.c ****         //    注意：这里的sin函数接收的是弧度制的alpha，这是正确的。
+ 186:user_code/navigation.c ****         double steering_rad = atan2(2.0 * VEHICLE_WHEELBASE * sin(alpha), lookahead_dist_dynamic);
+ 536              		.loc 1 186 63
+ 537 0214 9DED280B 		vldr.64	d0, [sp, #160]
+ 538 0218 FFF7FEFF 		bl	sin
+ 539 021c B0EE407B 		vmov.f64	d7, d0
+ 540              		.loc 1 186 31
+ 541 0220 9FED1F6B 		vldr.64	d6, .L58+40
+ 542 0224 27EE067B 		vmul.f64	d7, d7, d6
+ 543 0228 DDED2B6A 		vldr.32	s13, [sp, #172]
+ 544 022c B7EEE66A 		vcvt.f64.f32	d6, s13
+ 545 0230 B0EE461B 		vmov.f64	d1, d6
+ 546 0234 B0EE470B 		vmov.f64	d0, d7
+ 547 0238 FFF7FEFF 		bl	atan2
+ 548 023c 8DED180B 		vstr.64	d0, [sp, #96]
+ 187:user_code/navigation.c **** 
+ 188:user_code/navigation.c ****         // 6. 将计算出的舵机弧度角转换为角度
+ 189:user_code/navigation.c ****         g_steering_output = (float)(steering_rad * 180.0 / 3.1415926535);
+ 549              		.loc 1 189 50
+ 550 0240 9DED187B 		vldr.64	d7, [sp, #96]
+ 551 0244 9FED186B 		vldr.64	d6, .L58+48
+ 552 0248 27EE066B 		vmul.f64	d6, d7, d6
+ 553              		.loc 1 189 58
+ 554 024c 9FED0E5B 		vldr.64	d5, .L58+16
+ 555 0250 86EE057B 		vdiv.f64	d7, d6, d5
+ 556              		.loc 1 189 29
+ 557 0254 F7EEC77B 		vcvt.f32.f64	s15, d7
+ 558              		.loc 1 189 27
+ 559 0258 184B     		ldr	r3, .L58+68
+ 560 025a C3ED007A 		vstr.32	s15, [r3]
+ 561              	.LBE2:
+ 562 025e A1E0     		b	.L36
+ 563              	.L29:
+ 564              	.LBB3:
+ 190:user_code/navigation.c **** 
+ 191:user_code/navigation.c ****         // --- 核心算法修正结束 ---
+ 192:user_code/navigation.c ****     }
+ 193:user_code/navigation.c ****     else
+ 194:user_code/navigation.c ****     {
+ 195:user_code/navigation.c ****         // ... (未找到预瞄点的备用策略保持不变) ...
+ 196:user_code/navigation.c ****         // 注意：这里的备用策略也应该使用航向角进行修正，逻辑同上。
+ 197:user_code/navigation.c ****         // 为了简化，我们先聚焦主逻辑。当主逻辑验证通过后，可以再优化�
+ 198:user_code/navigation.c **** 
+ 199:user_code/navigation.c ****         // --- 备用策略修正建议（可选，可后续优化） ---
+ 200:user_code/navigation.c ****         // 1. 获取航向角 (同上)
+ 201:user_code/navigation.c ****         float heading_deg = 0.0f;
+ 565              		.loc 1 201 15
+ 566 0260 4FF00003 		mov	r3, #0
+ 567 0264 2793     		str	r3, [sp, #156]	@ float
+ 202:user_code/navigation.c ****         if (rtk_info->antenna_direction_state == 1) heading_deg = rtk_info->antenna_direction;
+ 568              		.loc 1 202 21
+ 569 0266 059B     		ldr	r3, [sp, #20]
+ 570 0268 93F83430 		ldrb	r3, [r3, #52]	@ zero_extendqisi2
+ 571              		.loc 1 202 12
+ 572 026c 012B     		cmp	r3, #1
+ 573 026e 27D1     		bne	.L37
+ 574              		.loc 1 202 65 discriminator 1
+ 575 0270 059B     		ldr	r3, [sp, #20]
+ 576 0272 9B6B     		ldr	r3, [r3, #56]	@ float
+ 577 0274 2793     		str	r3, [sp, #156]	@ float
+ 578 0276 26E0     		b	.L38
+ 579              	.L59:
+ 580              		.align	3
+ 581              	.L58:
+ 582 0278 00000000 		.word	0
+ 583 027c 00805640 		.word	1079410688
+ 584 0280 916B50A2 		.word	-1571787887
+ 585 0284 46DF913F 		.word	1066524486
+ 586 0288 44174154 		.word	1413551940
+ 587 028c FB210940 		.word	1074340347
+ 588 0290 44174154 		.word	1413551940
+ 589 0294 FB211940 		.word	1075388923
+ 590 0298 44174154 		.word	1413551940
+ 591 029c FB2109C0 		.word	-1073143301
+ 592 02a0 000000C0 		.word	-1073741824
+ 593 02a4 F528DC3F 		.word	1071393013
+ 594 02a8 00000000 		.word	0
+ 595 02ac 00806640 		.word	1080459264
+ 596 02b0 00000000 		.word	0
+ 597 02b4 0000C842 		.word	1120403456
+ 598 02b8 CDCC4C3F 		.word	1061997773
+ 599 02bc 00000000 		.word	g_steering_output
+ 600              	.L37:
+ 203:user_code/navigation.c ****         else heading_deg = rtk_info->direction;
+ 601              		.loc 1 203 26
+ 602 02c0 059B     		ldr	r3, [sp, #20]
+ 603 02c2 1B6B     		ldr	r3, [r3, #48]	@ float
+ 604 02c4 2793     		str	r3, [sp, #156]	@ float
+ 605              	.L38:
+ 204:user_code/navigation.c ****         double heading_rad = (90.0 - heading_deg) * (3.1415926535 / 180.0);
+ 606              		.loc 1 204 36
+ 607 02c6 DDED277A 		vldr.32	s15, [sp, #156]
+ 608 02ca B7EEE77A 		vcvt.f64.f32	d7, s15
+ 609 02ce 9FED5C6B 		vldr.64	d6, .L60
+ 610 02d2 36EE477B 		vsub.f64	d7, d6, d7
+ 611              		.loc 1 204 16
+ 612 02d6 9FED5C6B 		vldr.64	d6, .L60+8
+ 613 02da 27EE067B 		vmul.f64	d7, d7, d6
+ 614 02de 8DED207B 		vstr.64	d7, [sp, #128]
+ 205:user_code/navigation.c ****         heading_rad = atan2(sin(heading_rad), cos(heading_rad));
+ 615              		.loc 1 205 23
+ 616 02e2 9DED200B 		vldr.64	d0, [sp, #128]
+ 617 02e6 FFF7FEFF 		bl	sin
+ 618 02ea B0EE408B 		vmov.f64	d8, d0
+ 619 02ee 9DED200B 		vldr.64	d0, [sp, #128]
+ 620 02f2 FFF7FEFF 		bl	cos
+ 621 02f6 B0EE407B 		vmov.f64	d7, d0
+ 622 02fa B0EE471B 		vmov.f64	d1, d7
+ 623 02fe B0EE480B 		vmov.f64	d0, d8
+ 624 0302 FFF7FEFF 		bl	atan2
+ 625 0306 8DED200B 		vstr.64	d0, [sp, #128]
+ 206:user_code/navigation.c **** 
+ 207:user_code/navigation.c ****         // 2. 计算目标点在世界坐标系下的方位角
+ 208:user_code/navigation.c ****         double angle_to_target_rad = atan2(target_waypoint.y - current_pos.y, target_waypoint.x - c
+ 626              		.loc 1 208 59
+ 627 030a 9DED0C6B 		vldr.64	d6, [sp, #48]
+ 628              		.loc 1 208 75
+ 629 030e 9DED147B 		vldr.64	d7, [sp, #80]
+ 630              		.loc 1 208 38
+ 631 0312 36EE475B 		vsub.f64	d5, d6, d7
+ 632              		.loc 1 208 94
+ 633 0316 9DED0A6B 		vldr.64	d6, [sp, #40]
+ 634              		.loc 1 208 110
+ 635 031a 9DED127B 		vldr.64	d7, [sp, #72]
+ 636              		.loc 1 208 38
+ 637 031e 36EE477B 		vsub.f64	d7, d6, d7
+ 638 0322 B0EE471B 		vmov.f64	d1, d7
+ 639 0326 B0EE450B 		vmov.f64	d0, d5
+ 640 032a FFF7FEFF 		bl	atan2
+ 641 032e 8DED1E0B 		vstr.64	d0, [sp, #120]
+ 209:user_code/navigation.c **** 
+ 210:user_code/navigation.c ****         // 3. 计算相对夹角
+ 211:user_code/navigation.c ****         double relative_angle_rad = angle_to_target_rad - heading_rad;
+ 642              		.loc 1 211 16
+ 643 0332 9DED1E6B 		vldr.64	d6, [sp, #120]
+ 644 0336 9DED207B 		vldr.64	d7, [sp, #128]
+ 645 033a 36EE477B 		vsub.f64	d7, d6, d7
+ 646 033e 8DED247B 		vstr.64	d7, [sp, #144]
+ 212:user_code/navigation.c ****         // 归一化
+ 213:user_code/navigation.c ****         if (relative_angle_rad > 3.1415926535) relative_angle_rad -= 2 * 3.1415926535;
+ 647              		.loc 1 213 12
+ 648 0342 9DED247B 		vldr.64	d7, [sp, #144]
+ 649 0346 9FED426B 		vldr.64	d6, .L60+16
+ 650 034a B4EEC67B 		vcmpe.f64	d7, d6
+ 651 034e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 652 0352 07DD     		ble	.L39
+ 653              		.loc 1 213 67 discriminator 1
+ 654 0354 9DED247B 		vldr.64	d7, [sp, #144]
+ 655 0358 9FED3F6B 		vldr.64	d6, .L60+24
+ 656 035c 37EE467B 		vsub.f64	d7, d7, d6
+ 657 0360 8DED247B 		vstr.64	d7, [sp, #144]
+ 658              	.L39:
+ 214:user_code/navigation.c ****         if (relative_angle_rad < -3.1415926535) relative_angle_rad += 2 * 3.1415926535;
+ 659              		.loc 1 214 12
+ 660 0364 9DED247B 		vldr.64	d7, [sp, #144]
+ 661 0368 9FED3D6B 		vldr.64	d6, .L60+32
+ 662 036c B4EEC67B 		vcmpe.f64	d7, d6
+ 663 0370 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 664 0374 07D5     		bpl	.L41
+ 665              		.loc 1 214 68 discriminator 1
+ 666 0376 9DED247B 		vldr.64	d7, [sp, #144]
+ 667 037a 9FED376B 		vldr.64	d6, .L60+24
+ 668 037e 37EE067B 		vadd.f64	d7, d7, d6
+ 669 0382 8DED247B 		vstr.64	d7, [sp, #144]
+ 670              	.L41:
+ 215:user_code/navigation.c **** 
+ 216:user_code/navigation.c ****         // 4. 将相对角度直接作为转向角（这是一种简单的比例控制）
+ 217:user_code/navigation.c ****         g_steering_output = (float)(relative_angle_rad * 180.0 / 3.1415926535);
+ 671              		.loc 1 217 56
+ 672 0386 9DED247B 		vldr.64	d7, [sp, #144]
+ 673 038a 9FED376B 		vldr.64	d6, .L60+40
+ 674 038e 27EE066B 		vmul.f64	d6, d7, d6
+ 675              		.loc 1 217 64
+ 676 0392 9FED2F5B 		vldr.64	d5, .L60+16
+ 677 0396 86EE057B 		vdiv.f64	d7, d6, d5
+ 678              		.loc 1 217 29
+ 679 039a F7EEC77B 		vcvt.f32.f64	s15, d7
+ 680              		.loc 1 217 27
+ 681 039e 344B     		ldr	r3, .L60+48
+ 682 03a0 C3ED007A 		vstr.32	s15, [r3]
+ 683              	.L36:
+ 684              	.LBE3:
+ 218:user_code/navigation.c ****     }
+ 219:user_code/navigation.c **** 
+ 220:user_code/navigation.c **** 
+ 221:user_code/navigation.c ****     // [!!!请务必测试并校准!!!] 根据你的舵机安装方向，可能需要对计算出�
+ 222:user_code/navigation.c ****     // 如果上车测试时转向方向错误（例如应左转却右转），请将下面这行�
+ 223:user_code/navigation.c ****     g_steering_output = -g_steering_output;
+ 685              		.loc 1 223 25
+ 686 03a4 324B     		ldr	r3, .L60+48
+ 687 03a6 D3ED007A 		vldr.32	s15, [r3]
+ 688 03aa F1EE677A 		vneg.f32	s15, s15
+ 689              		.loc 1 223 23
+ 690 03ae 304B     		ldr	r3, .L60+48
+ 691 03b0 C3ED007A 		vstr.32	s15, [r3]
+ 224:user_code/navigation.c **** 
+ 225:user_code/navigation.c ****     // --- 第四部分：执行控制指令 ---
+ 226:user_code/navigation.c ****     // 对最终计算出的转向角进行物理限幅
+ 227:user_code/navigation.c ****     if (g_steering_output > SERVO_ANGLE_MAX) g_steering_output = SERVO_ANGLE_MAX;
+ 692              		.loc 1 227 27
+ 693 03b4 2E4B     		ldr	r3, .L60+48
+ 694 03b6 D3ED007A 		vldr.32	s15, [r3]
+ 695              		.loc 1 227 8
+ 696 03ba B3EE0E7A 		vmov.f32	s14, #3.0e+1
+ 697 03be F4EEC77A 		vcmpe.f32	s15, s14
+ 698 03c2 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 699 03c6 03DD     		ble	.L57
+ 700              		.loc 1 227 64 discriminator 1
+ 701 03c8 294B     		ldr	r3, .L60+48
+ 702 03ca 2A4A     		ldr	r2, .L60+52
+ 703 03cc 1A60     		str	r2, [r3]	@ float
+ 704 03ce 0CE0     		b	.L45
+ 705              	.L57:
+ 228:user_code/navigation.c ****     else if (g_steering_output < SERVO_ANGLE_MIN) g_steering_output = SERVO_ANGLE_MIN;
+ 706              		.loc 1 228 32
+ 707 03d0 274B     		ldr	r3, .L60+48
+ 708 03d2 D3ED007A 		vldr.32	s15, [r3]
+ 709              		.loc 1 228 13
+ 710 03d6 BBEE0E7A 		vmov.f32	s14, #-3.0e+1
+ 711 03da F4EEC77A 		vcmpe.f32	s15, s14
+ 712 03de F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 713 03e2 02D5     		bpl	.L45
+ 714              		.loc 1 228 69 discriminator 1
+ 715 03e4 224B     		ldr	r3, .L60+48
+ 716 03e6 244A     		ldr	r2, .L60+56
+ 717 03e8 1A60     		str	r2, [r3]	@ float
+ 718              	.L45:
+ 229:user_code/navigation.c **** 
+ 230:user_code/navigation.c ****     // [依赖确认] 假设 motion_set_servo_angle() 接收的是角度值。
+ 231:user_code/navigation.c ****     motion_set_servo_angle(g_steering_output);
+ 719              		.loc 1 231 5
+ 720 03ea 214B     		ldr	r3, .L60+48
+ 721 03ec D3ED007A 		vldr.32	s15, [r3]
+ 722 03f0 B0EE670A 		vmov.f32	s0, s15
+ 723 03f4 FFF7FEFF 		bl	motion_set_servo_angle
+ 232:user_code/navigation.c ****     //*************************************************************************
+ 233:user_code/navigation.c ****     float target_speed = 20.0f; // 定义一个名为 target_speed 的局部变量并赋值
+ 724              		.loc 1 233 11
+ 725 03f8 204B     		ldr	r3, .L60+60
+ 726 03fa 1793     		str	r3, [sp, #92]	@ float
+ 234:user_code/navigation.c ****     speed_control_set_speed(20.0f); // 固定为20 cm/s
+ 727              		.loc 1 234 5
+ 728 03fc B3EE040A 		vmov.f32	s0, #2.0e+1
+ 729 0400 FFF7FEFF 		bl	speed_control_set_speed
+ 235:user_code/navigation.c ****     // 动态速度规划：转角越大，速度越慢
+ 236:user_code/navigation.c ****     //************************************************************************
+ 237:user_code/navigation.c ****     /*
+ 238:user_code/navigation.c ****     float target_speed = MAX_SPEED_CMPS - SPEED_P_GAIN * fabs(g_steering_output);
+ 239:user_code/navigation.c ****     if (target_speed < MIN_SPEED_CMPS) target_speed = MIN_SPEED_CMPS;
+ 240:user_code/navigation.c ****     speed_control_set_speed(target_speed);
+ 241:user_code/navigation.c ****     */
+ 242:user_code/navigation.c ****     //**********************************************************************
+ 243:user_code/navigation.c ****     // --- 第五部分：调试信息输出 ---
+ 244:user_code/navigation.c ****     printf("Idx:%d, Ld:%.2f, Steer:%.1f, Spd:%.1f\r\n",
+ 730              		.loc 1 244 5
+ 731 0404 FFF7FEFF 		bl	path_manager_get_target_index
+ 732 0408 0146     		mov	r1, r0
+ 733 040a DDED2B7A 		vldr.32	s15, [sp, #172]
+ 734 040e B7EEE75A 		vcvt.f64.f32	d5, s15
+ 735 0412 174B     		ldr	r3, .L60+48
+ 736 0414 D3ED007A 		vldr.32	s15, [r3]
+ 737 0418 B7EEE77A 		vcvt.f64.f32	d7, s15
+ 738 041c DDED176A 		vldr.32	s13, [sp, #92]
+ 739 0420 B7EEE66A 		vcvt.f64.f32	d6, s13
+ 740 0424 8DED026B 		vstr.64	d6, [sp, #8]
+ 741 0428 8DED007B 		vstr.64	d7, [sp]
+ 742 042c 53EC152B 		vmov	r2, r3, d5
+ 743 0430 1348     		ldr	r0, .L60+64
+ 744 0432 FFF7FEFF 		bl	printf
+ 745              	.L21:
+ 245:user_code/navigation.c ****            path_manager_get_target_index(),
+ 246:user_code/navigation.c ****            lookahead_dist_dynamic,
+ 247:user_code/navigation.c ****            g_steering_output,
+ 248:user_code/navigation.c ****            target_speed);
+ 249:user_code/navigation.c **** }
+ 746              		.loc 1 249 1
+ 747 0436 2DB0     		add	sp, sp, #180
+ 748              		.cfi_def_cfa_offset 12
+ 749              		@ sp needed
+ 750 0438 BDEC028B 		vldm	sp!, {d8}
+ 751              		.cfi_restore 80
+ 752              		.cfi_restore 81
+ 753              		.cfi_def_cfa_offset 4
+ 754 043c 5DF804FB 		ldr	pc, [sp], #4
+ 755              	.L61:
+ 756              		.align	3
+ 757              	.L60:
+ 758 0440 00000000 		.word	0
+ 759 0444 00805640 		.word	1079410688
+ 760 0448 916B50A2 		.word	-1571787887
+ 761 044c 46DF913F 		.word	1066524486
+ 762 0450 44174154 		.word	1413551940
+ 763 0454 FB210940 		.word	1074340347
+ 764 0458 44174154 		.word	1413551940
+ 765 045c FB211940 		.word	1075388923
+ 766 0460 44174154 		.word	1413551940
+ 767 0464 FB2109C0 		.word	-1073143301
+ 768 0468 00000000 		.word	0
+ 769 046c 00806640 		.word	1080459264
+ 770 0470 00000000 		.word	g_steering_output
+ 771 0474 0000F041 		.word	1106247680
+ 772 0478 0000F0C1 		.word	-1041235968
+ 773 047c 0000A041 		.word	1101004800
+ 774 0480 00000000 		.word	.LC0
+ 775              		.cfi_endproc
+ 776              	.LFE484:
+ 778              		.text
+ 779              	.Letext0:
+ 780              		.file 2 "libraries/zf_common/zf_common_typedef.h"
+ 781              		.file 3 "C:/StellarStudio-7.1/SDKS/StellarESDK-1.7.0/Modules/Platform/MCU/include/sr5e1/sr5e1xx.h"
+ 782              		.file 4 "libraries/zf_driver/zf_driver_gpio.h"
+ 783              		.file 5 "libraries/zf_driver/zf_driver_adc.h"
+ 784              		.file 6 "libraries/zf_driver/zf_driver_can.h"
+ 785              		.file 7 "libraries/zf_driver/zf_driver_encoder.h"
+ 786              		.file 8 "libraries/zf_driver/zf_driver_exti.h"
+ 787              		.file 9 "libraries/zf_driver/zf_driver_hrtim.h"
+ 788              		.file 10 "libraries/zf_driver/zf_driver_pwm.h"
+ 789              		.file 11 "libraries/zf_driver/zf_driver_spi.h"
+ 790              		.file 12 "libraries/zf_driver/zf_driver_uart.h"
+ 791              		.file 13 "libraries/zf_device/zf_device_gnss.h"
+ 792              		.file 14 "libraries/zf_device/zf_device_imu_interface.h"
+ 793              		.file 15 "libraries/zf_device/zf_device_wireless_interface.h"
+ 794              		.file 16 "libraries/zf_device/zf_device_display_interface.h"
+ 795              		.file 17 "user_code/path_manager.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 navigation.c
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:19     .bss.g_steering_output:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:22     .bss.g_steering_output:00000000 g_steering_output
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:25     .text.find_lookahead_point:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:31     .text.find_lookahead_point:00000000 find_lookahead_point
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:276    .text.navigation_init:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:283    .text.navigation_init:00000000 navigation_init
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:305    .text.navigation_init:00000014 $d
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:310    .rodata:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:314    .text.navigation_run_once:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:321    .text.navigation_run_once:00000000 navigation_run_once
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:582    .text.navigation_run_once:00000278 $d
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:602    .text.navigation_run_once:000002c0 $t
+C:\Users\20766\AppData\Local\Temp\ccXkCy6S.s:758    .text.navigation_run_once:00000440 $d
+                           .group:00000000 wm4.0.1ea29c7543256e0887205fa7f8c557c8
+                           .group:00000000 wm4._newlib_version.h.4.bfdf54b0af045d4a71376ae00f63a22c
+                           .group:00000000 wm4.newlib.h.18.1c9fedb6b3cd797cff253cc0fd593ef2
+                           .group:00000000 wm4.ieeefp.h.77.2bc94c1d1ed8b02df437510a04ac1e45
+                           .group:00000000 wm4.features.h.22.026edb2397769f4ae13f35900dbdb560
+                           .group:00000000 wm4.config.h.224.c701144a7b0518c6ee9b9b5465b79f81
+                           .group:00000000 wm4._ansi.h.31.de524f58584151836e90d8620a16f8e8
+                           .group:00000000 wm4.stddef.h.39.27677723d43e5b5a7afdf8d798429f1d
+                           .group:00000000 wm4._types.h.20.dd0d04dca3800a0d2a6129b87f3adbb2
+                           .group:00000000 wm4.stddef.h.155.3588ebfdd1e8c7ede80509bb9c3b8009
+                           .group:00000000 wm4._default_types.h.6.959254cf5f09734ea7516c89e8bb21bd
+                           .group:00000000 wm4._types.h.127.34941de1b2539d59d5cac00e0dd27a45
+                           .group:00000000 wm4.reent.h.17.e292bf8b0bec6c96e131a54347145a30
+                           .group:00000000 wm4.lock.h.2.1461d1fff82dffe8bfddc23307f6484f
+                           .group:00000000 wm4.reent.h.77.dcd6129ff07fe81bd5636db29abe53b2
+                           .group:00000000 wm4.cdefs.h.49.a54b2d5c07711bc7320a3fea9f12cb56
+                           .group:00000000 wm4.math.h.13.b6595ad277a643a6127e1a4515a98f91
+                           .group:00000000 wm4.stdio.h.27.3fc80220048df77954e38daec3bb9670
+                           .group:00000000 wm4.stddef.h.155.ba788add86a0e365f264484f110c3c29
+                           .group:00000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:00000000 wm4.types.h.40.8b6acba56cefbb11746718204edc8f5e
+                           .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
+                           .group:00000000 wm4._endian.h.31.65a10590763c3dde1ac4a7f66d7d4891
+                           .group:00000000 wm4.endian.h.9.49f3a4695c1b61e8a0808de3c4a106cb
+                           .group:00000000 wm4._timeval.h.32.bec3221fa7a9bb0bdde696c9c57e47d2
+                           .group:00000000 wm4.timespec.h.41.d855182eb0e690443ab8651bcedca6e1
+                           .group:00000000 wm4.select.h.19.40cd3f2bfc456b193b790c2754690ebf
+                           .group:00000000 wm4.types.h.51.5571ec98f267d17d3c670b7a3ba33afa
+                           .group:00000000 wm4.sched.h.22.c60982713a5c428609783c78f9c78d95
+                           .group:00000000 wm4._pthreadtypes.h.36.fcee9961c35163dde6267ef772ad1972
+                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:00000000 wm4.stdio.h.81.932d0c162786b883f622b8d05c120c78
+                           .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
+                           .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.string.h.8.c4b8571ce60dff2817f43fec8b86aecd
+                           .group:00000000 wm4.sr5e1xx.h.22.e5c808533cc52ed19fb0830cd7d98924
+                           .group:00000000 wm4.cmsis_version.h.32.0f826810625204eca22a19868bdc7586
+                           .group:00000000 wm4.core_cm7.h.66.8ab2de36917d6fcae18019067fda13e0
+                           .group:00000000 wm4.cmsis_gcc.h.26.498d0ad17a45fc9ef20fdc01caf02259
+                           .group:00000000 wm4.core_cm7.h.174.43edb295ecdaadad738f48ba6011ffad
+                           .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
+                           .group:00000000 wm4.cachel1_armv7.h.32.abd77761a989e008b0c60891114a33c7
+                           .group:00000000 wm4.SR5E1_ADC.h.14.21608e6aff125ba995dd767d6d8dc311
+                           .group:00000000 wm4.SR5E1_CEM.h.14.01fe5742c8f1ae35b1f3af05932f702e
+                           .group:00000000 wm4.SR5E1_CMU.h.14.2617b38b159abe38028862394531e06d
+                           .group:00000000 wm4.SR5E1_COMP.h.14.4b6fdfe4f5f7fd9bedf3a99b98bdf4cd
+                           .group:00000000 wm4.SR5E1_CORDIC.h.14.354fbf7c9eaf6963d38eaa25cf28ffe8
+                           .group:00000000 wm4.SR5E1_CRC.h.14.c64d0f7767671ddb92e9ead0a1162100
+                           .group:00000000 wm4.SR5E1_DAC.h.14.8c26a0ff04b0cfeb55306cc3f22187b8
+                           .group:00000000 wm4.SR5E1_DBGMCU.h.14.427df893d53a8044654f017ba01c25ed
+                           .group:00000000 wm4.SR5E1_DMA.h.14.a7f9a92f844b40a86965798c2e64240b
+                           .group:00000000 wm4.SR5E1_DMAMUX.h.14.471b3b4dfd4d41515f1df49493698866
+                           .group:00000000 wm4.SR5E1_EXTI.h.14.a325ea3fe89cd84894660551c33241ea
+                           .group:00000000 wm4.SR5E1_FCCU.h.14.0ebf0f0f36e079d28613ad2c80e17e23
+                           .group:00000000 wm4.SR5E1_FDCAN.h.14.ac57101fad5dbc798bfb93f34c899de7
+                           .group:00000000 wm4.SR5E1_FLASH_REG_ITF.h.14.d23d1d44923f9b20b8c8fdb51d66aefd
+                           .group:00000000 wm4.SR5E1_GPIO.h.14.1c84071e130d7c64b62470ab0e18a1f1
+                           .group:00000000 wm4.SR5E1_HRTIM.h.24.03932387d2522e6bd5c772a4edaf2f5d
+                           .group:00000000 wm4.SR5E1_HSEM.h.14.cbe70eee519f01b16452c3f8c99d8df1
+                           .group:00000000 wm4.SR5E1_I2C.h.14.350ba3e0f4fd57828457efa80135c36c
+                           .group:00000000 wm4.SR5E1_IMA.h.14.62b7088985ab2b7ce9b030a02daa1f7d
+                           .group:00000000 wm4.SR5E1_IWDG.h.14.20b7c5f05cf7ae94464c360d7af3660d
+                           .group:00000000 wm4.SR5E1_MEMU.h.14.04bad7ae4c52ce334a4fc900aad2ae5b
+                           .group:00000000 wm4.SR5E1_NVM_CTRL.h.14.5f442617f0628d4f16258f211c614ef9
+                           .group:00000000 wm4.SR5E1_PLLDIG.h.14.bd87a8e6917eee17dae2f312c8e5fa53
+                           .group:00000000 wm4.SR5E1_PMC_DIG.h.14.54173b566c6656344766ec4ef46c9281
+                           .group:00000000 wm4.SR5E1_RCC.h.14.56734803c71534de286e793a53649740
+                           .group:00000000 wm4.SR5E1_RTC.h.14.47037cbc7d8175dbf2be1dc0bb955e3f
+                           .group:00000000 wm4.SR5E1_SD_ADC.h.14.552b97d0b8f3c1fd4df6d8964b2f1a80
+                           .group:00000000 wm4.SR5E1_SMPU.h.14.8ce5bb6d5d7c579cd725f492f46e9085
+                           .group:00000000 wm4.SR5E1_SPI.h.14.42d52112e540f85ade4d9135f8b87d72
+                           .group:00000000 wm4.SR5E1_SSCM.h.14.8e6a2ad0ce5fca422fc3d69939b6125b
+                           .group:00000000 wm4.SR5E1_SYSCFG.h.14.02b969490118ce4069914b5e94f7ca65
+                           .group:00000000 wm4.SR5E1_TDM.h.14.a40ed7928cad243a57fd233fccf01ad2
+                           .group:00000000 wm4.SR5E1_TIM.h.14.05b8efc5395873619642d61a4b0b5a54
+                           .group:00000000 wm4.SR5E1_UART.h.14.eec3ab82b02b3bdb3de500483675b83f
+                           .group:00000000 wm4.SR5E1_WWDG.h.14.59b45efc70e442cc6ef03702aad4ad88
+                           .group:00000000 wm4.stdbool.h.29.07dce69c3b78884144b7f7bd19483461
+                           .group:00000000 wm4.typedefs.h.36.07fe3956b4e751037cfee70edcd0b397
+                           .group:00000000 wm4.irq_numbers.h.38.6294b95aed1bf7b3a2cda0eed8ce8f57
+                           .group:00000000 wm4.regs.h.23.2ac145b4f57126d16daed5fbd86d99c6
+                           .group:00000000 wm4.stdarg.h.31.3fa7b8f6daaa31edd1696c08c77f2a73
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.56.f4862cfbf4363a1db01842d5bdf72c18
+                           .group:00000000 wm4.zf_common_typedef.h.47.8c368673885c9d07221c267e15ab1069
+                           .group:00000000 wm4.zf_common_debug.h.33.6d362bbaa8a8ff23e6f5c0a30bf7361f
+                           .group:00000000 wm4.zf_common_fifo.h.33.e14e643902e26e4e65437b5b20e82793
+                           .group:00000000 wm4.zf_common_function.h.33.02bbfb055e8ee322bc4f8b14ea195da2
+                           .group:00000000 wm4.zf_common_memory.h.33.d43647290a4d62164ff2ec77cadb89d8
+                           .group:00000000 wm4.saradc.h.25.e5a70aef9ec4fddf35f2b7cc0c9cf1bc
+                           .group:00000000 wm4.gpio.h.25.d41a0c19fda8c2de42e666afb48ec15a
+                           .group:00000000 wm4.zf_driver_gpio.h.65.5a4d2084c62fed7c22fdca02e748c198
+                           .group:00000000 wm4.zf_driver_adc.h.64.349fb433626b42172b0e0fee038428ca
+                           .group:00000000 wm4.can.h.25.3cfccb6c630ada4f656cab597e231e58
+                           .group:00000000 wm4.dmamux.h.25.337aea179f6dbcc87c52aae26d38f76e
+                           .group:00000000 wm4.clock_cfg.h.24.0aed3cee9ecce947225a304181294191
+                           .group:00000000 wm4.clock.h.37.80236c5607fdd9eb9275e5111a4191c3
+                           .group:00000000 wm4.irq.h.37.78714f25754c8b09d1428599101f6cc7
+                           .group:00000000 wm4.dma.h.40.f77dd217a06ceba13a3cfdd4102a73c1
+                           .group:00000000 wm4.zf_driver_can.h.67.fd10d2fa867eb54a54d4b57027d73a60
+                           .group:00000000 wm4.tim.h.25.6e7ad96569e77a70a68b9b4cc59f54f2
+                           .group:00000000 wm4.zf_driver_timer.h.33.8df253b6990d9861816977209fb11e90
+                           .group:00000000 wm4.zf_driver_encoder.h.57.7e32999f25354fac086ca226b0c630d4
+                           .group:00000000 wm4.exti.h.25.21597c35d9630b0985ce88d2c41f4ea4
+                           .group:00000000 wm4.zf_driver_exti.h.59.1b02b8083e5295ef5baaf83905d59395
+                           .group:00000000 wm4.ssd_types.h.29.b861f4e6d39d333f931bfc05b964cb1c
+                           .group:00000000 wm4.ssd_C55.h.37.dad650468a97d71aff4dd65ca085590f
+                           .group:00000000 wm4.zf_driver_flash.h.59.db93fe574c35ea9e79030063fbb35a13
+                           .group:00000000 wm4.hrtim.h.25.1601aea9d4a0da1de8252dc444355251
+                           .group:00000000 wm4.zf_driver_hrtim.h.64.cd8d2bf3bf1c471ea59d9c61e4a721d7
+                           .group:00000000 wm4.zf_driver_interrupt.h.33.2c3660dcc36cb090bd75b8f180c14f27
+                           .group:00000000 wm4.zf_driver_pit.h.33.834ac720a62e09d5603a9557331e9049
+                           .group:00000000 wm4.zf_driver_pwm.h.33.7d80487064ca712231a453396685a551
+                           .group:00000000 wm4.zf_driver_rcc.h.33.4c228cf40a79e1b974b30d5a9a3a77a7
+                           .group:00000000 wm4.zf_driver_soft_iic.h.33.9067bd298084134f63c61c075f95fa2b
+                           .group:00000000 wm4.zf_driver_soft_spi.h.33.a938287c023905d97cafe56e4be63674
+                           .group:00000000 wm4.zf_driver_spi.h.62.950b1f52ed365034df2907601137b455
+                           .group:00000000 wm4.zf_driver_system.h.33.370922a9681b47d575d2c83d302a180b
+                           .group:00000000 wm4.bsp_uart.h.31.c709869491969cfdef8a75d6bfc161b7
+                           .group:00000000 wm4.zf_driver_uart.h.68.14c9cf719d9cd0f517e5a4bcb943af75
+                           .group:00000000 wm4.zf_device_gnss.h.66.39fe53860d2d190725612db126de8287
+                           .group:00000000 wm4.zf_device_imu_interface.h.40.344a2c93b973b58cee305ff406fc3e84
+                           .group:00000000 wm4.zf_device_imu660rb.h.37.b47c39afb47c89c2c82bd28e76457042
+                           .group:00000000 wm4.zf_device_imu963ra.h.37.e773f164af6f72dd1b0b6c1242bf99b4
+                           .group:00000000 wm4.zf_device_wireless_interface.h.40.da0a07f107014cb0888a26f281971a5b
+                           .group:00000000 wm4.zf_device_display_interface.h.79.d8df25e52245efbd97fd6415c8db0a72
+                           .group:00000000 wm4.zf_device_ips200.h.37.957fc5e8b291701a6f6b47207b045b77
+                           .group:00000000 wm4.zf_device_key.h.45.b12f9096d8cc68f085b8fe9fe5b730db
+                           .group:00000000 wm4.zf_device_uart_receiver.h.43.9ac9496dcaa4780ef86d21fa439379b4
+                           .group:00000000 wm4.motion_control.h.14.d97db8f7a863ba9687d6573397dbabf7
+                           .group:00000000 wm4.speed_control.h.19.1bd57169cbb030f02e59b9c353c1c56f
+
+UNDEFINED SYMBOLS
+sqrt
+path_manager_init
+path_manager_is_mission_completed
+speed_control_set_speed
+motion_set_servo_angle
+path_manager_gps_to_local_xy
+path_manager_update_target_waypoint
+path_manager_get_start_waypoint
+path_manager_get_target_waypoint
+speed_control_get_current_speed
+sin
+cos
+atan2
+path_manager_get_target_index
+printf

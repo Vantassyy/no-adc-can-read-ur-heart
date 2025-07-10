@@ -1,0 +1,724 @@
+   1              		.cpu cortex-m7
+   2              		.arch armv7e-m
+   3              		.fpu fpv5-d16
+   4              		.eabi_attribute 28, 1
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 6
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.file	"speed_control.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.bss.g_motor_pid,"aw",%nobits
+  19              		.align	2
+  22              	g_motor_pid:
+  23 0000 00000000 		.space	24
+  23      00000000 
+  23      00000000 
+  23      00000000 
+  23      00000000 
+  24              		.section	.bss.g_current_speed_cmps,"aw",%nobits
+  25              		.align	2
+  28              	g_current_speed_cmps:
+  29 0000 00000000 		.space	4
+  30              		.section	.bss.g_target_speed_cmps,"aw",%nobits
+  31              		.align	2
+  34              	g_target_speed_cmps:
+  35 0000 00000000 		.space	4
+  36              		.section	.bss.g_motor_output,"aw",%nobits
+  37              		.align	2
+  40              	g_motor_output:
+  41 0000 00000000 		.space	4
+  42              		.section	.bss.g_counts_to_cmps_factor,"aw",%nobits
+  43              		.align	2
+  46              	g_counts_to_cmps_factor:
+  47 0000 00000000 		.space	4
+  48              		.section	.rodata
+  49              		.align	2
+  50              	.LC0:
+  51 0000 54617267 		.ascii	"Target:%5.1f | Current:%5.1f | Error:%+6.1f | Outpu"
+  51      65743A25 
+  51      352E3166 
+  51      207C2043 
+  51      75727265 
+  52 0033 743A2534 		.ascii	"t:%4d\012\000"
+  52      640A00
+  53              		.section	.text.speed_control_interrupt_handler,"ax",%progbits
+  54              		.align	1
+  55              		.p2align 4,,15
+  56              		.syntax unified
+  57              		.thumb
+  58              		.thumb_func
+  60              	speed_control_interrupt_handler:
+  61              	.LFB482:
+  62              		.file 1 "user_code/speed_control.c"
+   1:user_code/speed_control.c **** // =======================================================
+   2:user_code/speed_control.c **** // 文件: user_code/speed_control.c
+   3:user_code/speed_control.c **** // 版本: V2.1 - [AI-MOD] 为直接串口分析优化了打印格式
+   4:user_code/speed_control.c **** // =======================================================
+   5:user_code/speed_control.c **** #include "speed_control.h"
+   6:user_code/speed_control.c **** #include "motion_control.h"
+   7:user_code/speed_control.c **** #include "bsp_encoder.h"
+   8:user_code/speed_control.c **** #include "pid.h"
+   9:user_code/speed_control.c **** #include "zf_libraries_headfile.h"
+  10:user_code/speed_control.c **** #include <stdio.h> // 包含标准输入输出库，以使用printf
+  11:user_code/speed_control.c **** 
+  12:user_code/speed_control.c **** // ================== 内部变量 ==================
+  13:user_code/speed_control.c **** static PID_Controller g_motor_pid;
+  14:user_code/speed_control.c **** static float g_current_speed_cmps = 0.0f;
+  15:user_code/speed_control.c **** static float g_target_speed_cmps = 0.0f;
+  16:user_code/speed_control.c **** static float g_motor_output = 0.0f;
+  17:user_code/speed_control.c **** static float g_counts_to_cmps_factor = 0.0f;
+  18:user_code/speed_control.c **** 
+  19:user_code/speed_control.c **** // ================== 内部函数 (中断服务程序) ==================
+  20:user_code/speed_control.c **** 
+  21:user_code/speed_control.c **** /**
+  22:user_code/speed_control.c ****  * @brief  速度闭环控制中断服务程序 (已集成串口直接分析功能)
+  23:user_code/speed_control.c ****  * @note   此函数会被PIT定时器以 CONTROL_PERIOD_MS 的周期调用
+  24:user_code/speed_control.c ****  */
+  25:user_code/speed_control.c **** static void speed_control_interrupt_handler(uint32_t event, void *ptr)
+  26:user_code/speed_control.c **** {
+  63              		.loc 1 26 1
+  64              		.cfi_startproc
+  65              		@ args = 0, pretend = 0, frame = 24
+  66              		@ frame_needed = 0, uses_anonymous_args = 0
+  67 0000 00B5     		push	{lr}
+  68              		.cfi_def_cfa_offset 4
+  69              		.cfi_offset 14, -4
+  70 0002 8DB0     		sub	sp, sp, #52
+  71              		.cfi_def_cfa_offset 56
+  72 0004 0790     		str	r0, [sp, #28]
+  73 0006 0691     		str	r1, [sp, #24]
+  27:user_code/speed_control.c ****     (void)event; (void)ptr;
+  28:user_code/speed_control.c **** 
+  29:user_code/speed_control.c ****     // --- 1. 感知 (Perception) ---
+  30:user_code/speed_control.c ****     int16_t counts = encoder_get_and_clear_counts();
+  74              		.loc 1 30 22
+  75 0008 FFF7FEFF 		bl	encoder_get_and_clear_counts
+  76 000c 0346     		mov	r3, r0
+  77 000e ADF82E30 		strh	r3, [sp, #46]	@ movhi
+  31:user_code/speed_control.c ****     counts = -counts;
+  78              		.loc 1 31 12
+  79 0012 BDF82E30 		ldrh	r3, [sp, #46]
+  80 0016 5B42     		rsbs	r3, r3, #0
+  81 0018 9BB2     		uxth	r3, r3
+  82 001a ADF82E30 		strh	r3, [sp, #46]	@ movhi
+  32:user_code/speed_control.c ****     g_current_speed_cmps = (float)counts * g_counts_to_cmps_factor;
+  83              		.loc 1 32 28
+  84 001e BDF92E30 		ldrsh	r3, [sp, #46]
+  85 0022 07EE903A 		vmov	s15, r3	@ int
+  86 0026 B8EEE77A 		vcvt.f32.s32	s14, s15
+  87              		.loc 1 32 42
+  88 002a 634B     		ldr	r3, .L14
+  89 002c D3ED007A 		vldr.32	s15, [r3]
+  90 0030 67EE277A 		vmul.f32	s15, s14, s15
+  91              		.loc 1 32 26
+  92 0034 614B     		ldr	r3, .L14+4
+  93 0036 C3ED007A 		vstr.32	s15, [r3]
+  33:user_code/speed_control.c **** 
+  34:user_code/speed_control.c ****     // --- 2. 决策 (Decision) ---
+  35:user_code/speed_control.c ****     float pid_increment = PID_IncCalc(&g_motor_pid, g_current_speed_cmps);
+  94              		.loc 1 35 27
+  95 003a 604B     		ldr	r3, .L14+4
+  96 003c D3ED007A 		vldr.32	s15, [r3]
+  97 0040 B0EE670A 		vmov.f32	s0, s15
+  98 0044 5E48     		ldr	r0, .L14+8
+  99 0046 FFF7FEFF 		bl	PID_IncCalc
+ 100 004a 8DED0A0A 		vstr.32	s0, [sp, #40]
+  36:user_code/speed_control.c **** 
+  37:user_code/speed_control.c ****     // --- 3. 执行 (Execution) ---
+  38:user_code/speed_control.c ****     if (!((g_motor_output >= 100.0f && pid_increment > 0) ||
+ 101              		.loc 1 38 27
+ 102 004e 5D4B     		ldr	r3, .L14+12
+ 103 0050 D3ED007A 		vldr.32	s15, [r3]
+ 104 0054 9FED5C7A 		vldr.32	s14, .L14+16
+ 105 0058 F4EEC77A 		vcmpe.f32	s15, s14
+ 106 005c F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 107 0060 ACBF     		ite	ge
+ 108 0062 0123     		movge	r3, #1
+ 109 0064 0023     		movlt	r3, #0
+ 110 0066 DBB2     		uxtb	r3, r3
+ 111 0068 83F00103 		eor	r3, r3, #1
+ 112 006c DBB2     		uxtb	r3, r3
+ 113              		.loc 1 38 8
+ 114 006e 002B     		cmp	r3, #0
+ 115 0070 0ED1     		bne	.L2
+ 116              		.loc 1 38 54 discriminator 2
+ 117 0072 DDED0A7A 		vldr.32	s15, [sp, #40]
+ 118 0076 F5EEC07A 		vcmpe.f32	s15, #0
+ 119 007a F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 120 007e CCBF     		ite	gt
+ 121 0080 0123     		movgt	r3, #1
+ 122 0082 0023     		movle	r3, #0
+ 123 0084 DBB2     		uxtb	r3, r3
+ 124 0086 83F00103 		eor	r3, r3, #1
+ 125 008a DBB2     		uxtb	r3, r3
+ 126              		.loc 1 38 37 discriminator 2
+ 127 008c 002B     		cmp	r3, #0
+ 128 008e 2AD0     		beq	.L3
+ 129              	.L2:
+  39:user_code/speed_control.c ****           (g_motor_output <= -100.0f && pid_increment < 0)))
+ 130              		.loc 1 39 27 discriminator 3
+ 131 0090 4C4B     		ldr	r3, .L14+12
+ 132 0092 D3ED007A 		vldr.32	s15, [r3]
+ 133 0096 9FED4D7A 		vldr.32	s14, .L14+20
+ 134 009a F4EEC77A 		vcmpe.f32	s15, s14
+ 135 009e F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 136 00a2 94BF     		ite	ls
+ 137 00a4 0123     		movls	r3, #1
+ 138 00a6 0023     		movhi	r3, #0
+ 139 00a8 DBB2     		uxtb	r3, r3
+ 140 00aa 83F00103 		eor	r3, r3, #1
+ 141 00ae DBB2     		uxtb	r3, r3
+  38:user_code/speed_control.c ****           (g_motor_output <= -100.0f && pid_increment < 0)))
+ 142              		.loc 1 38 9 discriminator 3
+ 143 00b0 002B     		cmp	r3, #0
+ 144 00b2 0ED1     		bne	.L4
+ 145              		.loc 1 39 55
+ 146 00b4 DDED0A7A 		vldr.32	s15, [sp, #40]
+ 147 00b8 F5EEC07A 		vcmpe.f32	s15, #0
+ 148 00bc F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 149 00c0 4CBF     		ite	mi
+ 150 00c2 0123     		movmi	r3, #1
+ 151 00c4 0023     		movpl	r3, #0
+ 152 00c6 DBB2     		uxtb	r3, r3
+ 153 00c8 83F00103 		eor	r3, r3, #1
+ 154 00cc DBB2     		uxtb	r3, r3
+ 155              		.loc 1 39 38
+ 156 00ce 002B     		cmp	r3, #0
+ 157 00d0 09D0     		beq	.L3
+ 158              	.L4:
+  40:user_code/speed_control.c ****     {
+  41:user_code/speed_control.c ****         g_motor_output += pid_increment;
+ 159              		.loc 1 41 24
+ 160 00d2 3C4B     		ldr	r3, .L14+12
+ 161 00d4 93ED007A 		vldr.32	s14, [r3]
+ 162 00d8 DDED0A7A 		vldr.32	s15, [sp, #40]
+ 163 00dc 77EE277A 		vadd.f32	s15, s14, s15
+ 164 00e0 384B     		ldr	r3, .L14+12
+ 165 00e2 C3ED007A 		vstr.32	s15, [r3]
+ 166              	.L3:
+  42:user_code/speed_control.c ****     }
+  43:user_code/speed_control.c ****     if (g_motor_output > 100.0f) { g_motor_output = 100.0f; }
+ 167              		.loc 1 43 24
+ 168 00e6 374B     		ldr	r3, .L14+12
+ 169 00e8 D3ED007A 		vldr.32	s15, [r3]
+ 170              		.loc 1 43 8
+ 171 00ec 9FED367A 		vldr.32	s14, .L14+16
+ 172 00f0 F4EEC77A 		vcmpe.f32	s15, s14
+ 173 00f4 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 174 00f8 03DD     		ble	.L12
+ 175              		.loc 1 43 51 discriminator 1
+ 176 00fa 324B     		ldr	r3, .L14+12
+ 177 00fc 344A     		ldr	r2, .L14+24
+ 178 00fe 1A60     		str	r2, [r3]	@ float
+ 179 0100 0CE0     		b	.L7
+ 180              	.L12:
+  44:user_code/speed_control.c ****     else if (g_motor_output < -100.0f) { g_motor_output = -100.0f; }
+ 181              		.loc 1 44 29
+ 182 0102 304B     		ldr	r3, .L14+12
+ 183 0104 D3ED007A 		vldr.32	s15, [r3]
+ 184              		.loc 1 44 13
+ 185 0108 9FED307A 		vldr.32	s14, .L14+20
+ 186 010c F4EEC77A 		vcmpe.f32	s15, s14
+ 187 0110 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 188 0114 02D5     		bpl	.L7
+ 189              		.loc 1 44 57 discriminator 1
+ 190 0116 2B4B     		ldr	r3, .L14+12
+ 191 0118 2E4A     		ldr	r2, .L14+28
+ 192 011a 1A60     		str	r2, [r3]	@ float
+ 193              	.L7:
+  45:user_code/speed_control.c **** 
+  46:user_code/speed_control.c ****     motion_set_motor_speed_openloop((int16_t)g_motor_output, (int16_t)g_motor_output);
+ 194              		.loc 1 46 5
+ 195 011c 294B     		ldr	r3, .L14+12
+ 196 011e D3ED007A 		vldr.32	s15, [r3]
+ 197 0122 FDEEE77A 		vcvt.s32.f32	s15, s15
+ 198 0126 17EE903A 		vmov	r3, s15	@ int
+ 199 012a 1BB2     		sxth	r3, r3
+ 200 012c 254A     		ldr	r2, .L14+12
+ 201 012e D2ED007A 		vldr.32	s15, [r2]
+ 202 0132 FDEEE77A 		vcvt.s32.f32	s15, s15
+ 203 0136 17EE902A 		vmov	r2, s15	@ int
+ 204 013a 12B2     		sxth	r2, r2
+ 205 013c 1146     		mov	r1, r2
+ 206 013e 1846     		mov	r0, r3
+ 207 0140 FFF7FEFF 		bl	motion_set_motor_speed_openloop
+  47:user_code/speed_control.c **** 
+  48:user_code/speed_control.c **** 
+  49:user_code/speed_control.c ****     // --- 4. [AI-MOD] 调试信息打印 (用于直接串口分析) ---
+  50:user_code/speed_control.c ****     // 使用一个静态计数器来降低打印频率，避免刷屏
+  51:user_code/speed_control.c ****     static int print_counter = 0;
+  52:user_code/speed_control.c ****     // 假设 CONTROL_PERIOD_MS=10ms, "10" 表示每 10*10ms = 100ms 打印一次
+  53:user_code/speed_control.c ****     if (++print_counter >= 10)
+ 208              		.loc 1 53 9
+ 209 0144 244B     		ldr	r3, .L14+32
+ 210 0146 1B68     		ldr	r3, [r3]
+ 211 0148 0133     		adds	r3, r3, #1
+ 212              		.loc 1 53 8
+ 213 014a 234A     		ldr	r2, .L14+32
+ 214 014c 1360     		str	r3, [r2]
+ 215              		.loc 1 53 9
+ 216 014e 224B     		ldr	r3, .L14+32
+ 217 0150 1B68     		ldr	r3, [r3]
+ 218              		.loc 1 53 8
+ 219 0152 092B     		cmp	r3, #9
+ 220 0154 2BDD     		ble	.L13
+ 221              	.LBB2:
+  54:user_code/speed_control.c ****     {
+  55:user_code/speed_control.c ****         print_counter = 0;
+ 222              		.loc 1 55 23
+ 223 0156 204B     		ldr	r3, .L14+32
+ 224 0158 0022     		movs	r2, #0
+ 225 015a 1A60     		str	r2, [r3]
+  56:user_code/speed_control.c ****         float error = g_target_speed_cmps - g_current_speed_cmps;
+ 226              		.loc 1 56 43
+ 227 015c 1F4B     		ldr	r3, .L14+36
+ 228 015e 93ED007A 		vldr.32	s14, [r3]
+ 229 0162 164B     		ldr	r3, .L14+4
+ 230 0164 D3ED007A 		vldr.32	s15, [r3]
+ 231              		.loc 1 56 15
+ 232 0168 77EE677A 		vsub.f32	s15, s14, s15
+ 233 016c CDED097A 		vstr.32	s15, [sp, #36]
+  57:user_code/speed_control.c **** 
+  58:user_code/speed_control.c ****         printf("Target:%5.1f | Current:%5.1f | Error:%+6.1f | Output:%4d\n",
+ 234              		.loc 1 58 9
+ 235 0170 1A4B     		ldr	r3, .L14+36
+ 236 0172 D3ED007A 		vldr.32	s15, [r3]
+ 237 0176 B7EEE74A 		vcvt.f64.f32	d4, s15
+ 238 017a 104B     		ldr	r3, .L14+4
+ 239 017c D3ED007A 		vldr.32	s15, [r3]
+ 240 0180 B7EEE77A 		vcvt.f64.f32	d7, s15
+ 241 0184 DDED096A 		vldr.32	s13, [sp, #36]
+ 242 0188 B7EEE66A 		vcvt.f64.f32	d6, s13
+ 243 018c 0D4B     		ldr	r3, .L14+12
+ 244 018e D3ED005A 		vldr.32	s11, [r3]
+ 245 0192 FDEEE55A 		vcvt.s32.f32	s11, s11
+ 246 0196 15EE903A 		vmov	r3, s11	@ int
+ 247 019a 0493     		str	r3, [sp, #16]
+ 248 019c 8DED026B 		vstr.64	d6, [sp, #8]
+ 249 01a0 8DED007B 		vstr.64	d7, [sp]
+ 250 01a4 53EC142B 		vmov	r2, r3, d4
+ 251 01a8 0D48     		ldr	r0, .L14+40
+ 252 01aa FFF7FEFF 		bl	printf
+ 253              	.L13:
+ 254              	.LBE2:
+  59:user_code/speed_control.c ****                g_target_speed_cmps,
+  60:user_code/speed_control.c ****                g_current_speed_cmps,
+  61:user_code/speed_control.c ****                error,
+  62:user_code/speed_control.c ****                (int)g_motor_output);
+  63:user_code/speed_control.c ****     }
+  64:user_code/speed_control.c **** }
+ 255              		.loc 1 64 1
+ 256 01ae 00BF     		nop
+ 257 01b0 0DB0     		add	sp, sp, #52
+ 258              		.cfi_def_cfa_offset 4
+ 259              		@ sp needed
+ 260 01b2 5DF804FB 		ldr	pc, [sp], #4
+ 261              	.L15:
+ 262 01b6 00BF     		.align	2
+ 263              	.L14:
+ 264 01b8 00000000 		.word	g_counts_to_cmps_factor
+ 265 01bc 00000000 		.word	g_current_speed_cmps
+ 266 01c0 00000000 		.word	g_motor_pid
+ 267 01c4 00000000 		.word	g_motor_output
+ 268 01c8 0000C842 		.word	1120403456
+ 269 01cc 0000C8C2 		.word	-1027080192
+ 270 01d0 0000C842 		.word	1120403456
+ 271 01d4 0000C8C2 		.word	-1027080192
+ 272 01d8 00000000 		.word	print_counter.0
+ 273 01dc 00000000 		.word	g_target_speed_cmps
+ 274 01e0 00000000 		.word	.LC0
+ 275              		.cfi_endproc
+ 276              	.LFE482:
+ 278              		.section	.text.speed_control_init,"ax",%progbits
+ 279              		.align	1
+ 280              		.p2align 4,,15
+ 281              		.global	speed_control_init
+ 282              		.syntax unified
+ 283              		.thumb
+ 284              		.thumb_func
+ 286              	speed_control_init:
+ 287              	.LFB483:
+  65:user_code/speed_control.c **** 
+  66:user_code/speed_control.c **** // ================== API函数实现 ==================
+  67:user_code/speed_control.c **** 
+  68:user_code/speed_control.c **** // (speed_control_init, set_speed, get_current_speed 函数保持不变, 这里省略以保持简�
+  69:user_code/speed_control.c **** // (请确保您文件中的这些函数是完整的)
+  70:user_code/speed_control.c **** void speed_control_init(void)
+  71:user_code/speed_control.c **** {
+ 288              		.loc 1 71 1
+ 289              		.cfi_startproc
+ 290              		@ args = 0, pretend = 0, frame = 24
+ 291              		@ frame_needed = 0, uses_anonymous_args = 0
+ 292 0000 00B5     		push	{lr}
+ 293              		.cfi_def_cfa_offset 4
+ 294              		.cfi_offset 14, -4
+ 295 0002 87B0     		sub	sp, sp, #28
+ 296              		.cfi_def_cfa_offset 32
+  72:user_code/speed_control.c ****     // 1. 初始化依赖的底层模块
+  73:user_code/speed_control.c ****     encoder_init();
+ 297              		.loc 1 73 5
+ 298 0004 FFF7FEFF 		bl	encoder_init
+  74:user_code/speed_control.c ****     motion_control_init();
+ 299              		.loc 1 74 5
+ 300 0008 FFF7FEFF 		bl	motion_control_init
+  75:user_code/speed_control.c **** 
+  76:user_code/speed_control.c ****     // 2. 计算转换系数
+  77:user_code/speed_control.c ****     const float wheel_circumference_cm = (WHEEL_DIAMETER_MM / 10.0f) * 3.1415926f;
+ 301              		.loc 1 77 17
+ 302 000c 1B4B     		ldr	r3, .L17
+ 303 000e 0593     		str	r3, [sp, #20]	@ float
+  78:user_code/speed_control.c ****     const float total_pulses_per_rev = (float)ENCODER_PPR * 4.0f;
+ 304              		.loc 1 78 17
+ 305 0010 4FF08B43 		mov	r3, #1166016512
+ 306 0014 0493     		str	r3, [sp, #16]	@ float
+  79:user_code/speed_control.c ****     const float pulses_per_wheel_rev = total_pulses_per_rev * GEAR_RATIO;
+ 307              		.loc 1 79 17
+ 308 0016 DDED047A 		vldr.32	s15, [sp, #16]
+ 309 001a 9FED197A 		vldr.32	s14, .L17+4
+ 310 001e 67EE877A 		vmul.f32	s15, s15, s14
+ 311 0022 CDED037A 		vstr.32	s15, [sp, #12]
+  80:user_code/speed_control.c ****     const float cm_per_pulse = wheel_circumference_cm / pulses_per_wheel_rev;
+ 312              		.loc 1 80 17
+ 313 0026 DDED056A 		vldr.32	s13, [sp, #20]
+ 314 002a 9DED037A 		vldr.32	s14, [sp, #12]
+ 315 002e C6EE877A 		vdiv.f32	s15, s13, s14
+ 316 0032 CDED027A 		vstr.32	s15, [sp, #8]
+  81:user_code/speed_control.c ****     const float control_period_s = (float)CONTROL_PERIOD_MS / 1000.0f;
+ 317              		.loc 1 81 17
+ 318 0036 134B     		ldr	r3, .L17+8
+ 319 0038 0193     		str	r3, [sp, #4]	@ float
+  82:user_code/speed_control.c ****     g_counts_to_cmps_factor = cm_per_pulse / control_period_s;
+ 320              		.loc 1 82 44
+ 321 003a DDED026A 		vldr.32	s13, [sp, #8]
+ 322 003e 9DED017A 		vldr.32	s14, [sp, #4]
+ 323 0042 C6EE877A 		vdiv.f32	s15, s13, s14
+ 324              		.loc 1 82 29
+ 325 0046 104B     		ldr	r3, .L17+12
+ 326 0048 C3ED007A 		vstr.32	s15, [r3]
+  83:user_code/speed_control.c **** 
+  84:user_code/speed_control.c ****     // 3. 初始化PID控制器
+  85:user_code/speed_control.c ****     PID_Init(&g_motor_pid, MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
+ 327              		.loc 1 85 5
+ 328 004c 9FED0F1A 		vldr.32	s2, .L17+16
+ 329 0050 DFED0F0A 		vldr.32	s1, .L17+20
+ 330 0054 9FED0F0A 		vldr.32	s0, .L17+24
+ 331 0058 0F48     		ldr	r0, .L17+28
+ 332 005a FFF7FEFF 		bl	PID_Init
+  86:user_code/speed_control.c ****     speed_control_set_speed(0.0f);
+ 333              		.loc 1 86 5
+ 334 005e 9FED0F0A 		vldr.32	s0, .L17+32
+ 335 0062 FFF7FEFF 		bl	speed_control_set_speed
+  87:user_code/speed_control.c **** 
+  88:user_code/speed_control.c ****     // 4. 初始化并启动单个PIT定时器，用于速度闭环控制
+  89:user_code/speed_control.c ****     zf_pit_ms_init(PIT_TIM7, CONTROL_PERIOD_MS, speed_control_interrupt_handler, NULL);
+ 336              		.loc 1 89 5
+ 337 0066 0023     		movs	r3, #0
+ 338 0068 0D4A     		ldr	r2, .L17+36
+ 339 006a 0A21     		movs	r1, #10
+ 340 006c 0920     		movs	r0, #9
+ 341 006e FFF7FEFF 		bl	zf_pit_ms_init
+  90:user_code/speed_control.c **** }
+ 342              		.loc 1 90 1
+ 343 0072 00BF     		nop
+ 344 0074 07B0     		add	sp, sp, #28
+ 345              		.cfi_def_cfa_offset 4
+ 346              		@ sp needed
+ 347 0076 5DF804FB 		ldr	pc, [sp], #4
+ 348              	.L18:
+ 349 007a 00BF     		.align	2
+ 350              	.L17:
+ 351 007c AAF4B441 		.word	1102378154
+ 352 0080 355E8240 		.word	1082285621
+ 353 0084 0AD7233C 		.word	1008981770
+ 354 0088 00000000 		.word	g_counts_to_cmps_factor
+ 355 008c CDCC4C3F 		.word	1061997773
+ 356 0090 9A99193E 		.word	1041865114
+ 357 0094 CDCCCC3E 		.word	1053609165
+ 358 0098 00000000 		.word	g_motor_pid
+ 359 009c 00000000 		.word	0
+ 360 00a0 00000000 		.word	speed_control_interrupt_handler
+ 361              		.cfi_endproc
+ 362              	.LFE483:
+ 364              		.section	.text.speed_control_set_speed,"ax",%progbits
+ 365              		.align	1
+ 366              		.p2align 4,,15
+ 367              		.global	speed_control_set_speed
+ 368              		.syntax unified
+ 369              		.thumb
+ 370              		.thumb_func
+ 372              	speed_control_set_speed:
+ 373              	.LFB484:
+  91:user_code/speed_control.c **** 
+  92:user_code/speed_control.c **** void speed_control_set_speed(float target_speed_cmps)
+  93:user_code/speed_control.c **** {
+ 374              		.loc 1 93 1
+ 375              		.cfi_startproc
+ 376              		@ args = 0, pretend = 0, frame = 8
+ 377              		@ frame_needed = 0, uses_anonymous_args = 0
+ 378 0000 00B5     		push	{lr}
+ 379              		.cfi_def_cfa_offset 4
+ 380              		.cfi_offset 14, -4
+ 381 0002 83B0     		sub	sp, sp, #12
+ 382              		.cfi_def_cfa_offset 16
+ 383 0004 8DED010A 		vstr.32	s0, [sp, #4]
+  94:user_code/speed_control.c ****     g_target_speed_cmps = target_speed_cmps;
+ 384              		.loc 1 94 25
+ 385 0008 074A     		ldr	r2, .L20
+ 386 000a 019B     		ldr	r3, [sp, #4]	@ float
+ 387 000c 1360     		str	r3, [r2]	@ float
+  95:user_code/speed_control.c ****     PID_SetPoint(&g_motor_pid, g_target_speed_cmps);
+ 388              		.loc 1 95 5
+ 389 000e 064B     		ldr	r3, .L20
+ 390 0010 D3ED007A 		vldr.32	s15, [r3]
+ 391 0014 B0EE670A 		vmov.f32	s0, s15
+ 392 0018 0448     		ldr	r0, .L20+4
+ 393 001a FFF7FEFF 		bl	PID_SetPoint
+  96:user_code/speed_control.c **** }
+ 394              		.loc 1 96 1
+ 395 001e 00BF     		nop
+ 396 0020 03B0     		add	sp, sp, #12
+ 397              		.cfi_def_cfa_offset 4
+ 398              		@ sp needed
+ 399 0022 5DF804FB 		ldr	pc, [sp], #4
+ 400              	.L21:
+ 401 0026 00BF     		.align	2
+ 402              	.L20:
+ 403 0028 00000000 		.word	g_target_speed_cmps
+ 404 002c 00000000 		.word	g_motor_pid
+ 405              		.cfi_endproc
+ 406              	.LFE484:
+ 408              		.section	.text.speed_control_get_current_speed,"ax",%progbits
+ 409              		.align	1
+ 410              		.p2align 4,,15
+ 411              		.global	speed_control_get_current_speed
+ 412              		.syntax unified
+ 413              		.thumb
+ 414              		.thumb_func
+ 416              	speed_control_get_current_speed:
+ 417              	.LFB485:
+  97:user_code/speed_control.c **** 
+  98:user_code/speed_control.c **** float speed_control_get_current_speed(void)
+  99:user_code/speed_control.c **** {
+ 418              		.loc 1 99 1
+ 419              		.cfi_startproc
+ 420              		@ args = 0, pretend = 0, frame = 0
+ 421              		@ frame_needed = 0, uses_anonymous_args = 0
+ 422              		@ link register save eliminated.
+ 100:user_code/speed_control.c ****     return g_current_speed_cmps;
+ 423              		.loc 1 100 12
+ 424 0000 034B     		ldr	r3, .L24
+ 425 0002 1B68     		ldr	r3, [r3]	@ float
+ 426 0004 07EE903A 		vmov	s15, r3
+ 101:user_code/speed_control.c **** }
+ 427              		.loc 1 101 1
+ 428 0008 B0EE670A 		vmov.f32	s0, s15
+ 429 000c 7047     		bx	lr
+ 430              	.L25:
+ 431 000e 00BF     		.align	2
+ 432              	.L24:
+ 433 0010 00000000 		.word	g_current_speed_cmps
+ 434              		.cfi_endproc
+ 435              	.LFE485:
+ 437              		.section	.bss.print_counter.0,"aw",%nobits
+ 438              		.align	2
+ 441              	print_counter.0:
+ 442 0000 00000000 		.space	4
+ 443              		.text
+ 444              	.Letext0:
+ 445              		.file 2 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 446              		.file 3 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 447              		.file 4 "libraries/zf_common/zf_common_typedef.h"
+ 448              		.file 5 "C:/StellarStudio-7.1/SDKS/StellarESDK-1.7.0/Modules/Platform/MCU/include/sr5e1/sr5e1xx.h"
+ 449              		.file 6 "libraries/zf_driver/zf_driver_gpio.h"
+ 450              		.file 7 "libraries/zf_driver/zf_driver_adc.h"
+ 451              		.file 8 "libraries/zf_driver/zf_driver_can.h"
+ 452              		.file 9 "libraries/zf_driver/zf_driver_encoder.h"
+ 453              		.file 10 "libraries/zf_driver/zf_driver_exti.h"
+ 454              		.file 11 "libraries/zf_driver/zf_driver_hrtim.h"
+ 455              		.file 12 "libraries/zf_driver/zf_driver_pit.h"
+ 456              		.file 13 "libraries/zf_driver/zf_driver_pwm.h"
+ 457              		.file 14 "libraries/zf_driver/zf_driver_spi.h"
+ 458              		.file 15 "libraries/zf_driver/zf_driver_uart.h"
+ 459              		.file 16 "libraries/zf_device/zf_device_imu_interface.h"
+ 460              		.file 17 "libraries/zf_device/zf_device_wireless_interface.h"
+ 461              		.file 18 "libraries/zf_device/zf_device_display_interface.h"
+ 462              		.file 19 "user_code/pid.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 speed_control.c
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:19     .bss.g_motor_pid:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:22     .bss.g_motor_pid:00000000 g_motor_pid
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:25     .bss.g_current_speed_cmps:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:28     .bss.g_current_speed_cmps:00000000 g_current_speed_cmps
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:31     .bss.g_target_speed_cmps:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:34     .bss.g_target_speed_cmps:00000000 g_target_speed_cmps
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:37     .bss.g_motor_output:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:40     .bss.g_motor_output:00000000 g_motor_output
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:43     .bss.g_counts_to_cmps_factor:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:46     .bss.g_counts_to_cmps_factor:00000000 g_counts_to_cmps_factor
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:49     .rodata:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:54     .text.speed_control_interrupt_handler:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:60     .text.speed_control_interrupt_handler:00000000 speed_control_interrupt_handler
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:264    .text.speed_control_interrupt_handler:000001b8 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:441    .bss.print_counter.0:00000000 print_counter.0
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:279    .text.speed_control_init:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:286    .text.speed_control_init:00000000 speed_control_init
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:372    .text.speed_control_set_speed:00000000 speed_control_set_speed
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:351    .text.speed_control_init:0000007c $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:365    .text.speed_control_set_speed:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:403    .text.speed_control_set_speed:00000028 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:409    .text.speed_control_get_current_speed:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:416    .text.speed_control_get_current_speed:00000000 speed_control_get_current_speed
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:433    .text.speed_control_get_current_speed:00000010 $d
+C:\Users\20766\AppData\Local\Temp\ccl3PvQB.s:438    .bss.print_counter.0:00000000 $d
+                           .group:00000000 wm4.0.1ea29c7543256e0887205fa7f8c557c8
+                           .group:00000000 wm4._newlib_version.h.4.bfdf54b0af045d4a71376ae00f63a22c
+                           .group:00000000 wm4.newlib.h.18.1c9fedb6b3cd797cff253cc0fd593ef2
+                           .group:00000000 wm4.ieeefp.h.77.2bc94c1d1ed8b02df437510a04ac1e45
+                           .group:00000000 wm4.features.h.22.026edb2397769f4ae13f35900dbdb560
+                           .group:00000000 wm4.config.h.224.c701144a7b0518c6ee9b9b5465b79f81
+                           .group:00000000 wm4._ansi.h.31.de524f58584151836e90d8620a16f8e8
+                           .group:00000000 wm4.stdio.h.31.7c0e28c411445f3f9c5b11accf882760
+                           .group:00000000 wm4._default_types.h.6.959254cf5f09734ea7516c89e8bb21bd
+                           .group:00000000 wm4.stddef.h.181.c3f52a3b0f4c288bddb5dda1562858e2
+                           .group:00000000 wm4.cdefs.h.49.a54b2d5c07711bc7320a3fea9f12cb56
+                           .group:00000000 wm4.stddef.h.39.c161261b198ee3a963897077fd6fa59f
+                           .group:00000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:00000000 wm4._types.h.20.dd0d04dca3800a0d2a6129b87f3adbb2
+                           .group:00000000 wm4.stddef.h.155.3588ebfdd1e8c7ede80509bb9c3b8009
+                           .group:00000000 wm4._types.h.127.34941de1b2539d59d5cac00e0dd27a45
+                           .group:00000000 wm4.reent.h.17.e292bf8b0bec6c96e131a54347145a30
+                           .group:00000000 wm4.lock.h.2.1461d1fff82dffe8bfddc23307f6484f
+                           .group:00000000 wm4.reent.h.77.dcd6129ff07fe81bd5636db29abe53b2
+                           .group:00000000 wm4.types.h.40.8b6acba56cefbb11746718204edc8f5e
+                           .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
+                           .group:00000000 wm4._endian.h.31.65a10590763c3dde1ac4a7f66d7d4891
+                           .group:00000000 wm4.endian.h.9.49f3a4695c1b61e8a0808de3c4a106cb
+                           .group:00000000 wm4._timeval.h.32.bec3221fa7a9bb0bdde696c9c57e47d2
+                           .group:00000000 wm4.timespec.h.41.d855182eb0e690443ab8651bcedca6e1
+                           .group:00000000 wm4.select.h.19.40cd3f2bfc456b193b790c2754690ebf
+                           .group:00000000 wm4.types.h.51.5571ec98f267d17d3c670b7a3ba33afa
+                           .group:00000000 wm4.sched.h.22.c60982713a5c428609783c78f9c78d95
+                           .group:00000000 wm4._pthreadtypes.h.36.fcee9961c35163dde6267ef772ad1972
+                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:00000000 wm4.stdio.h.81.932d0c162786b883f622b8d05c120c78
+                           .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
+                           .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.stdbool.h.29.07dce69c3b78884144b7f7bd19483461
+                           .group:00000000 wm4.stdarg.h.31.3fa7b8f6daaa31edd1696c08c77f2a73
+                           .group:00000000 wm4.string.h.8.c4b8571ce60dff2817f43fec8b86aecd
+                           .group:00000000 wm4.stddef.h.155.ba788add86a0e365f264484f110c3c29
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.56.f4862cfbf4363a1db01842d5bdf72c18
+                           .group:00000000 wm4.zf_common_typedef.h.47.8c368673885c9d07221c267e15ab1069
+                           .group:00000000 wm4.sr5e1xx.h.22.e5c808533cc52ed19fb0830cd7d98924
+                           .group:00000000 wm4.cmsis_version.h.32.0f826810625204eca22a19868bdc7586
+                           .group:00000000 wm4.core_cm7.h.66.8ab2de36917d6fcae18019067fda13e0
+                           .group:00000000 wm4.cmsis_gcc.h.26.498d0ad17a45fc9ef20fdc01caf02259
+                           .group:00000000 wm4.core_cm7.h.174.43edb295ecdaadad738f48ba6011ffad
+                           .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
+                           .group:00000000 wm4.cachel1_armv7.h.32.abd77761a989e008b0c60891114a33c7
+                           .group:00000000 wm4.SR5E1_ADC.h.14.21608e6aff125ba995dd767d6d8dc311
+                           .group:00000000 wm4.SR5E1_CEM.h.14.01fe5742c8f1ae35b1f3af05932f702e
+                           .group:00000000 wm4.SR5E1_CMU.h.14.2617b38b159abe38028862394531e06d
+                           .group:00000000 wm4.SR5E1_COMP.h.14.4b6fdfe4f5f7fd9bedf3a99b98bdf4cd
+                           .group:00000000 wm4.SR5E1_CORDIC.h.14.354fbf7c9eaf6963d38eaa25cf28ffe8
+                           .group:00000000 wm4.SR5E1_CRC.h.14.c64d0f7767671ddb92e9ead0a1162100
+                           .group:00000000 wm4.SR5E1_DAC.h.14.8c26a0ff04b0cfeb55306cc3f22187b8
+                           .group:00000000 wm4.SR5E1_DBGMCU.h.14.427df893d53a8044654f017ba01c25ed
+                           .group:00000000 wm4.SR5E1_DMA.h.14.a7f9a92f844b40a86965798c2e64240b
+                           .group:00000000 wm4.SR5E1_DMAMUX.h.14.471b3b4dfd4d41515f1df49493698866
+                           .group:00000000 wm4.SR5E1_EXTI.h.14.a325ea3fe89cd84894660551c33241ea
+                           .group:00000000 wm4.SR5E1_FCCU.h.14.0ebf0f0f36e079d28613ad2c80e17e23
+                           .group:00000000 wm4.SR5E1_FDCAN.h.14.ac57101fad5dbc798bfb93f34c899de7
+                           .group:00000000 wm4.SR5E1_FLASH_REG_ITF.h.14.d23d1d44923f9b20b8c8fdb51d66aefd
+                           .group:00000000 wm4.SR5E1_GPIO.h.14.1c84071e130d7c64b62470ab0e18a1f1
+                           .group:00000000 wm4.SR5E1_HRTIM.h.24.03932387d2522e6bd5c772a4edaf2f5d
+                           .group:00000000 wm4.SR5E1_HSEM.h.14.cbe70eee519f01b16452c3f8c99d8df1
+                           .group:00000000 wm4.SR5E1_I2C.h.14.350ba3e0f4fd57828457efa80135c36c
+                           .group:00000000 wm4.SR5E1_IMA.h.14.62b7088985ab2b7ce9b030a02daa1f7d
+                           .group:00000000 wm4.SR5E1_IWDG.h.14.20b7c5f05cf7ae94464c360d7af3660d
+                           .group:00000000 wm4.SR5E1_MEMU.h.14.04bad7ae4c52ce334a4fc900aad2ae5b
+                           .group:00000000 wm4.SR5E1_NVM_CTRL.h.14.5f442617f0628d4f16258f211c614ef9
+                           .group:00000000 wm4.SR5E1_PLLDIG.h.14.bd87a8e6917eee17dae2f312c8e5fa53
+                           .group:00000000 wm4.SR5E1_PMC_DIG.h.14.54173b566c6656344766ec4ef46c9281
+                           .group:00000000 wm4.SR5E1_RCC.h.14.56734803c71534de286e793a53649740
+                           .group:00000000 wm4.SR5E1_RTC.h.14.47037cbc7d8175dbf2be1dc0bb955e3f
+                           .group:00000000 wm4.SR5E1_SD_ADC.h.14.552b97d0b8f3c1fd4df6d8964b2f1a80
+                           .group:00000000 wm4.SR5E1_SMPU.h.14.8ce5bb6d5d7c579cd725f492f46e9085
+                           .group:00000000 wm4.SR5E1_SPI.h.14.42d52112e540f85ade4d9135f8b87d72
+                           .group:00000000 wm4.SR5E1_SSCM.h.14.8e6a2ad0ce5fca422fc3d69939b6125b
+                           .group:00000000 wm4.SR5E1_SYSCFG.h.14.02b969490118ce4069914b5e94f7ca65
+                           .group:00000000 wm4.SR5E1_TDM.h.14.a40ed7928cad243a57fd233fccf01ad2
+                           .group:00000000 wm4.SR5E1_TIM.h.14.05b8efc5395873619642d61a4b0b5a54
+                           .group:00000000 wm4.SR5E1_UART.h.14.eec3ab82b02b3bdb3de500483675b83f
+                           .group:00000000 wm4.SR5E1_WWDG.h.14.59b45efc70e442cc6ef03702aad4ad88
+                           .group:00000000 wm4.typedefs.h.36.07fe3956b4e751037cfee70edcd0b397
+                           .group:00000000 wm4.irq_numbers.h.38.6294b95aed1bf7b3a2cda0eed8ce8f57
+                           .group:00000000 wm4.regs.h.23.2ac145b4f57126d16daed5fbd86d99c6
+                           .group:00000000 wm4.zf_common_debug.h.33.6d362bbaa8a8ff23e6f5c0a30bf7361f
+                           .group:00000000 wm4.zf_common_fifo.h.33.e14e643902e26e4e65437b5b20e82793
+                           .group:00000000 wm4.zf_common_function.h.33.02bbfb055e8ee322bc4f8b14ea195da2
+                           .group:00000000 wm4.zf_common_memory.h.33.d43647290a4d62164ff2ec77cadb89d8
+                           .group:00000000 wm4.saradc.h.25.e5a70aef9ec4fddf35f2b7cc0c9cf1bc
+                           .group:00000000 wm4.gpio.h.25.d41a0c19fda8c2de42e666afb48ec15a
+                           .group:00000000 wm4.zf_driver_gpio.h.65.5a4d2084c62fed7c22fdca02e748c198
+                           .group:00000000 wm4.zf_driver_adc.h.64.349fb433626b42172b0e0fee038428ca
+                           .group:00000000 wm4.can.h.25.3cfccb6c630ada4f656cab597e231e58
+                           .group:00000000 wm4.dmamux.h.25.337aea179f6dbcc87c52aae26d38f76e
+                           .group:00000000 wm4.clock_cfg.h.24.0aed3cee9ecce947225a304181294191
+                           .group:00000000 wm4.clock.h.37.80236c5607fdd9eb9275e5111a4191c3
+                           .group:00000000 wm4.irq.h.37.78714f25754c8b09d1428599101f6cc7
+                           .group:00000000 wm4.dma.h.40.f77dd217a06ceba13a3cfdd4102a73c1
+                           .group:00000000 wm4.zf_driver_can.h.67.fd10d2fa867eb54a54d4b57027d73a60
+                           .group:00000000 wm4.tim.h.25.6e7ad96569e77a70a68b9b4cc59f54f2
+                           .group:00000000 wm4.zf_driver_timer.h.33.8df253b6990d9861816977209fb11e90
+                           .group:00000000 wm4.zf_driver_encoder.h.57.7e32999f25354fac086ca226b0c630d4
+                           .group:00000000 wm4.exti.h.25.21597c35d9630b0985ce88d2c41f4ea4
+                           .group:00000000 wm4.zf_driver_exti.h.59.1b02b8083e5295ef5baaf83905d59395
+                           .group:00000000 wm4.ssd_types.h.29.b861f4e6d39d333f931bfc05b964cb1c
+                           .group:00000000 wm4.ssd_C55.h.37.dad650468a97d71aff4dd65ca085590f
+                           .group:00000000 wm4.zf_driver_flash.h.59.db93fe574c35ea9e79030063fbb35a13
+                           .group:00000000 wm4.hrtim.h.25.1601aea9d4a0da1de8252dc444355251
+                           .group:00000000 wm4.zf_driver_hrtim.h.64.cd8d2bf3bf1c471ea59d9c61e4a721d7
+                           .group:00000000 wm4.zf_driver_interrupt.h.33.2c3660dcc36cb090bd75b8f180c14f27
+                           .group:00000000 wm4.zf_driver_pit.h.33.834ac720a62e09d5603a9557331e9049
+                           .group:00000000 wm4.zf_driver_pwm.h.33.7d80487064ca712231a453396685a551
+                           .group:00000000 wm4.zf_driver_rcc.h.33.4c228cf40a79e1b974b30d5a9a3a77a7
+                           .group:00000000 wm4.zf_driver_soft_iic.h.33.9067bd298084134f63c61c075f95fa2b
+                           .group:00000000 wm4.zf_driver_soft_spi.h.33.a938287c023905d97cafe56e4be63674
+                           .group:00000000 wm4.zf_driver_spi.h.62.950b1f52ed365034df2907601137b455
+                           .group:00000000 wm4.zf_driver_system.h.33.370922a9681b47d575d2c83d302a180b
+                           .group:00000000 wm4.bsp_uart.h.31.c709869491969cfdef8a75d6bfc161b7
+                           .group:00000000 wm4.zf_driver_uart.h.68.14c9cf719d9cd0f517e5a4bcb943af75
+                           .group:00000000 wm4.zf_device_imu_interface.h.40.344a2c93b973b58cee305ff406fc3e84
+                           .group:00000000 wm4.zf_device_imu660rb.h.37.b47c39afb47c89c2c82bd28e76457042
+                           .group:00000000 wm4.zf_device_imu963ra.h.37.e773f164af6f72dd1b0b6c1242bf99b4
+                           .group:00000000 wm4.zf_device_wireless_interface.h.40.da0a07f107014cb0888a26f281971a5b
+                           .group:00000000 wm4.zf_device_display_interface.h.79.d8df25e52245efbd97fd6415c8db0a72
+                           .group:00000000 wm4.zf_device_ips200.h.37.957fc5e8b291701a6f6b47207b045b77
+                           .group:00000000 wm4.math.h.13.b6595ad277a643a6127e1a4515a98f91
+                           .group:00000000 wm4.zf_device_gnss.h.66.39fe53860d2d190725612db126de8287
+                           .group:00000000 wm4.zf_device_key.h.45.b12f9096d8cc68f085b8fe9fe5b730db
+                           .group:00000000 wm4.zf_device_uart_receiver.h.43.9ac9496dcaa4780ef86d21fa439379b4
+                           .group:00000000 wm4.motion_control.h.14.d97db8f7a863ba9687d6573397dbabf7
+                           .group:00000000 wm4.speed_control.h.19.1bd57169cbb030f02e59b9c353c1c56f
+
+UNDEFINED SYMBOLS
+encoder_get_and_clear_counts
+PID_IncCalc
+motion_set_motor_speed_openloop
+printf
+encoder_init
+motion_control_init
+PID_Init
+zf_pit_ms_init
+PID_SetPoint

@@ -1,0 +1,616 @@
+   1              		.cpu cortex-m7
+   2              		.arch armv7e-m
+   3              		.fpu fpv5-d16
+   4              		.eabi_attribute 28, 1
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 6
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.file	"motion_control.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.text.map_value,"ax",%progbits
+  19              		.align	1
+  20              		.p2align 4,,15
+  21              		.syntax unified
+  22              		.thumb
+  23              		.thumb_func
+  25              	map_value:
+  26              	.LFB482:
+  27              		.file 1 "user_code/motion_control.c"
+   1:user_code/motion_control.c **** #include "motion_control.h"
+   2:user_code/motion_control.c **** #include <stdlib.h> // for abs()
+   3:user_code/motion_control.c **** 
+   4:user_code/motion_control.c **** // ================== 内部宏定义 ==================
+   5:user_code/motion_control.c **** 
+   6:user_code/motion_control.c **** // -- 舵机通道定义 (来自 bsp_pwm.h, 正确) --
+   7:user_code/motion_control.c **** #define SERVO_CHANNEL       BSP_PWM_SERVO_1
+   8:user_code/motion_control.c **** 
+   9:user_code/motion_control.c **** // -- 电机通道定义 (来自原理图和你的代码, 确认无误) --
+  10:user_code/motion_control.c **** #define MOTOR_PWM_CH        BSP_PWM_MOTOR_L1   // 使用 E4 引脚作为速度PWM
+  11:user_code/motion_control.c **** #define MOTOR_DIR_PIN       (E2)               // 使用 E2 引脚作为方向GPIO
+  12:user_code/motion_control.c **** 
+  13:user_code/motion_control.c **** // -- [已修正] 电机方向电平定义 (使用从 zf_driver_gpio.h 中找到的官方宏) --
+  14:user_code/motion_control.c **** #define MOTOR_DIR_FORWARD   (GPIO_HIGH)
+  15:user_code/motion_control.c **** #define MOTOR_DIR_REVERSE   (GPIO_LOW)
+  16:user_code/motion_control.c **** 
+  17:user_code/motion_control.c **** // ================== 内部辅助函数 ==================
+  18:user_code/motion_control.c **** 
+  19:user_code/motion_control.c **** // 线性映射辅助函数
+  20:user_code/motion_control.c **** static inline float map_value(float value, float from_min, float from_max, float to_min, float to_m
+  21:user_code/motion_control.c **** {
+  28              		.loc 1 21 1
+  29              		.cfi_startproc
+  30              		@ args = 0, pretend = 0, frame = 24
+  31              		@ frame_needed = 0, uses_anonymous_args = 0
+  32              		@ link register save eliminated.
+  33 0000 86B0     		sub	sp, sp, #24
+  34              		.cfi_def_cfa_offset 24
+  35 0002 8DED050A 		vstr.32	s0, [sp, #20]
+  36 0006 CDED040A 		vstr.32	s1, [sp, #16]
+  37 000a 8DED031A 		vstr.32	s2, [sp, #12]
+  38 000e CDED021A 		vstr.32	s3, [sp, #8]
+  39 0012 8DED012A 		vstr.32	s4, [sp, #4]
+  22:user_code/motion_control.c ****     return (value - from_min) * (to_max - to_min) / (from_max - from_min) + to_min;
+  40              		.loc 1 22 19
+  41 0016 9DED057A 		vldr.32	s14, [sp, #20]
+  42 001a DDED047A 		vldr.32	s15, [sp, #16]
+  43 001e 37EE677A 		vsub.f32	s14, s14, s15
+  44              		.loc 1 22 41
+  45 0022 DDED016A 		vldr.32	s13, [sp, #4]
+  46 0026 DDED027A 		vldr.32	s15, [sp, #8]
+  47 002a 76EEE77A 		vsub.f32	s15, s13, s15
+  48              		.loc 1 22 31
+  49 002e 67EE276A 		vmul.f32	s13, s14, s15
+  50              		.loc 1 22 63
+  51 0032 9DED037A 		vldr.32	s14, [sp, #12]
+  52 0036 DDED047A 		vldr.32	s15, [sp, #16]
+  53 003a 77EE677A 		vsub.f32	s15, s14, s15
+  54              		.loc 1 22 51
+  55 003e 86EEA77A 		vdiv.f32	s14, s13, s15
+  56              		.loc 1 22 75
+  57 0042 DDED027A 		vldr.32	s15, [sp, #8]
+  58 0046 77EE277A 		vadd.f32	s15, s14, s15
+  23:user_code/motion_control.c **** }
+  59              		.loc 1 23 1
+  60 004a B0EE670A 		vmov.f32	s0, s15
+  61 004e 06B0     		add	sp, sp, #24
+  62              		.cfi_def_cfa_offset 0
+  63              		@ sp needed
+  64 0050 7047     		bx	lr
+  65              		.cfi_endproc
+  66              	.LFE482:
+  68 0052 00BF     		.section	.text.motion_control_init,"ax",%progbits
+  69              		.align	1
+  70              		.p2align 4,,15
+  71              		.global	motion_control_init
+  72              		.syntax unified
+  73              		.thumb
+  74              		.thumb_func
+  76              	motion_control_init:
+  77              	.LFB483:
+  24:user_code/motion_control.c **** 
+  25:user_code/motion_control.c **** // ================== API函数实现 ==================
+  26:user_code/motion_control.c **** 
+  27:user_code/motion_control.c **** void motion_control_init(void)
+  28:user_code/motion_control.c **** {
+  78              		.loc 1 28 1
+  79              		.cfi_startproc
+  80              		@ args = 0, pretend = 0, frame = 0
+  81              		@ frame_needed = 0, uses_anonymous_args = 0
+  82 0000 08B5     		push	{r3, lr}
+  83              		.cfi_def_cfa_offset 8
+  84              		.cfi_offset 3, -8
+  85              		.cfi_offset 14, -4
+  29:user_code/motion_control.c ****     // 1. 初始化PWM模块
+  30:user_code/motion_control.c ****     bsp_pwm_init(MOTOR_PWM_FREQ_HZ, SERVO_PWM_FREQ_HZ);
+  86              		.loc 1 30 5
+  87 0002 3221     		movs	r1, #50
+  88 0004 44F26820 		movw	r0, #17000
+  89 0008 FFF7FEFF 		bl	bsp_pwm_init
+  31:user_code/motion_control.c **** 
+  32:user_code/motion_control.c ****     // 2. [已修正] 初始化电机的方向控制引脚
+  33:user_code/motion_control.c ****     //    使用官方宏 GPO_PUSH_PULL 和 MOTOR_DIR_REVERSE (即 GPIO_LOW)。
+  34:user_code/motion_control.c ****     //    函数调用为正确的3个参数。
+  35:user_code/motion_control.c ****     zf_gpio_init(MOTOR_DIR_PIN, GPO_PUSH_PULL, MOTOR_DIR_REVERSE);
+  90              		.loc 1 35 5
+  91 000c 0022     		movs	r2, #0
+  92 000e 1021     		movs	r1, #16
+  93 0010 8220     		movs	r0, #130
+  94 0012 FFF7FEFF 		bl	zf_gpio_init
+  36:user_code/motion_control.c **** 
+  37:user_code/motion_control.c ****     // 3. 设置初始状态
+  38:user_code/motion_control.c ****     motion_set_servo_angle(0.0f);
+  95              		.loc 1 38 5
+  96 0016 9FED050A 		vldr.32	s0, .L4
+  97 001a FFF7FEFF 		bl	motion_set_servo_angle
+  39:user_code/motion_control.c ****     motion_set_motor_speed_openloop(0, 0);
+  98              		.loc 1 39 5
+  99 001e 0021     		movs	r1, #0
+ 100 0020 0020     		movs	r0, #0
+ 101 0022 FFF7FEFF 		bl	motion_set_motor_speed_openloop
+  40:user_code/motion_control.c **** }
+ 102              		.loc 1 40 1
+ 103 0026 00BF     		nop
+ 104 0028 08BD     		pop	{r3, pc}
+ 105              	.L5:
+ 106 002a 00BF     		.align	2
+ 107              	.L4:
+ 108 002c 00000000 		.word	0
+ 109              		.cfi_endproc
+ 110              	.LFE483:
+ 112              		.section	.text.motion_set_servo_angle,"ax",%progbits
+ 113              		.align	1
+ 114              		.p2align 4,,15
+ 115              		.global	motion_set_servo_angle
+ 116              		.syntax unified
+ 117              		.thumb
+ 118              		.thumb_func
+ 120              	motion_set_servo_angle:
+ 121              	.LFB484:
+  41:user_code/motion_control.c **** 
+  42:user_code/motion_control.c **** void motion_set_servo_angle(float angle)
+  43:user_code/motion_control.c **** {
+ 122              		.loc 1 43 1
+ 123              		.cfi_startproc
+ 124              		@ args = 0, pretend = 0, frame = 24
+ 125              		@ frame_needed = 0, uses_anonymous_args = 0
+ 126 0000 00B5     		push	{lr}
+ 127              		.cfi_def_cfa_offset 4
+ 128              		.cfi_offset 14, -4
+ 129 0002 87B0     		sub	sp, sp, #28
+ 130              		.cfi_def_cfa_offset 32
+ 131 0004 8DED010A 		vstr.32	s0, [sp, #4]
+  44:user_code/motion_control.c ****     // ... 此部分代码不涉及GPIO，是正确的，无需修改 ...
+  45:user_code/motion_control.c ****     if (angle > SERVO_ANGLE_MAX) angle = SERVO_ANGLE_MAX;
+ 132              		.loc 1 45 8
+ 133 0008 DDED017A 		vldr.32	s15, [sp, #4]
+ 134 000c B3EE0E7A 		vmov.f32	s14, #3.0e+1
+ 135 0010 F4EEC77A 		vcmpe.f32	s15, s14
+ 136 0014 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 137 0018 01DD     		ble	.L7
+ 138              		.loc 1 45 40 discriminator 1
+ 139 001a 2A4B     		ldr	r3, .L18
+ 140 001c 0193     		str	r3, [sp, #4]	@ float
+ 141              	.L7:
+  46:user_code/motion_control.c ****     if (angle < SERVO_ANGLE_MIN) angle = SERVO_ANGLE_MIN;
+ 142              		.loc 1 46 8
+ 143 001e DDED017A 		vldr.32	s15, [sp, #4]
+ 144 0022 BBEE0E7A 		vmov.f32	s14, #-3.0e+1
+ 145 0026 F4EEC77A 		vcmpe.f32	s15, s14
+ 146 002a F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 147 002e 01D5     		bpl	.L9
+ 148              		.loc 1 46 40 discriminator 1
+ 149 0030 254B     		ldr	r3, .L18+4
+ 150 0032 0193     		str	r3, [sp, #4]	@ float
+ 151              	.L9:
+  47:user_code/motion_control.c **** 
+  48:user_code/motion_control.c ****     uint16_t duty_us;
+  49:user_code/motion_control.c ****     if (angle >= 0)
+ 152              		.loc 1 49 8
+ 153 0034 DDED017A 		vldr.32	s15, [sp, #4]
+ 154 0038 F5EEC07A 		vcmpe.f32	s15, #0
+ 155 003c F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 156 0040 14DB     		blt	.L17
+  50:user_code/motion_control.c ****     {
+  51:user_code/motion_control.c ****         duty_us = (uint16_t)map_value(angle, 0, SERVO_ANGLE_MAX, SERVO_DUTY_NEUTRAL_US, SERVO_DUTY_
+ 157              		.loc 1 51 29
+ 158 0042 9FED222A 		vldr.32	s4, .L18+8
+ 159 0046 DFED221A 		vldr.32	s3, .L18+12
+ 160 004a B3EE0E1A 		vmov.f32	s2, #3.0e+1
+ 161 004e DFED210A 		vldr.32	s1, .L18+16
+ 162 0052 9DED010A 		vldr.32	s0, [sp, #4]
+ 163 0056 FFF7FEFF 		bl	map_value
+ 164 005a F0EE407A 		vmov.f32	s15, s0
+ 165              		.loc 1 51 17
+ 166 005e FCEEE77A 		vcvt.u32.f32	s15, s15
+ 167 0062 17EE903A 		vmov	r3, s15	@ int
+ 168 0066 ADF81630 		strh	r3, [sp, #22]	@ movhi
+ 169 006a 13E0     		b	.L13
+ 170              	.L17:
+  52:user_code/motion_control.c ****     }
+  53:user_code/motion_control.c ****     else
+  54:user_code/motion_control.c ****     {
+  55:user_code/motion_control.c ****         duty_us = (uint16_t)map_value(angle, SERVO_ANGLE_MIN, 0, SERVO_DUTY_MIN_US, SERVO_DUTY_NEUT
+ 171              		.loc 1 55 29
+ 172 006c 9FED182A 		vldr.32	s4, .L18+12
+ 173 0070 DFED191A 		vldr.32	s3, .L18+20
+ 174 0074 9FED171A 		vldr.32	s2, .L18+16
+ 175 0078 FBEE0E0A 		vmov.f32	s1, #-3.0e+1
+ 176 007c 9DED010A 		vldr.32	s0, [sp, #4]
+ 177 0080 FFF7FEFF 		bl	map_value
+ 178 0084 F0EE407A 		vmov.f32	s15, s0
+ 179              		.loc 1 55 17
+ 180 0088 FCEEE77A 		vcvt.u32.f32	s15, s15
+ 181 008c 17EE903A 		vmov	r3, s15	@ int
+ 182 0090 ADF81630 		strh	r3, [sp, #22]	@ movhi
+ 183              	.L13:
+  56:user_code/motion_control.c ****     }
+  57:user_code/motion_control.c **** 
+  58:user_code/motion_control.c ****     uint32_t period_us = 1000000 / SERVO_PWM_FREQ_HZ;
+ 184              		.loc 1 58 14
+ 185 0094 44F62063 		movw	r3, #20000
+ 186 0098 0493     		str	r3, [sp, #16]
+  59:user_code/motion_control.c ****     uint16_t duty_permillage = (uint32_t)duty_us * 10000 / period_us;
+ 187              		.loc 1 59 32
+ 188 009a BDF81630 		ldrh	r3, [sp, #22]
+ 189              		.loc 1 59 50
+ 190 009e 42F21072 		movw	r2, #10000
+ 191 00a2 03FB02F2 		mul	r2, r3, r2
+ 192              		.loc 1 59 58
+ 193 00a6 049B     		ldr	r3, [sp, #16]
+ 194 00a8 B2FBF3F3 		udiv	r3, r2, r3
+ 195              		.loc 1 59 14
+ 196 00ac ADF80E30 		strh	r3, [sp, #14]	@ movhi
+  60:user_code/motion_control.c **** 
+  61:user_code/motion_control.c ****     bsp_pwm_set_duty(SERVO_CHANNEL, duty_permillage);
+ 197              		.loc 1 61 5
+ 198 00b0 BDF80E30 		ldrh	r3, [sp, #14]
+ 199 00b4 1946     		mov	r1, r3
+ 200 00b6 0020     		movs	r0, #0
+ 201 00b8 FFF7FEFF 		bl	bsp_pwm_set_duty
+  62:user_code/motion_control.c **** }
+ 202              		.loc 1 62 1
+ 203 00bc 00BF     		nop
+ 204 00be 07B0     		add	sp, sp, #28
+ 205              		.cfi_def_cfa_offset 4
+ 206              		@ sp needed
+ 207 00c0 5DF804FB 		ldr	pc, [sp], #4
+ 208              	.L19:
+ 209              		.align	2
+ 210              	.L18:
+ 211 00c4 0000F041 		.word	1106247680
+ 212 00c8 0000F0C1 		.word	-1041235968
+ 213 00cc 0080ED44 		.word	1156415488
+ 214 00d0 00C0C144 		.word	1153548288
+ 215 00d4 00000000 		.word	0
+ 216 00d8 00009644 		.word	1150681088
+ 217              		.cfi_endproc
+ 218              	.LFE484:
+ 220              		.section	.text.motion_set_motor_speed_openloop,"ax",%progbits
+ 221              		.align	1
+ 222              		.p2align 4,,15
+ 223              		.global	motion_set_motor_speed_openloop
+ 224              		.syntax unified
+ 225              		.thumb
+ 226              		.thumb_func
+ 228              	motion_set_motor_speed_openloop:
+ 229              	.LFB485:
+  63:user_code/motion_control.c **** 
+  64:user_code/motion_control.c **** void motion_set_motor_speed_openloop(int16_t left_speed, int16_t right_speed)
+  65:user_code/motion_control.c **** {
+ 230              		.loc 1 65 1
+ 231              		.cfi_startproc
+ 232              		@ args = 0, pretend = 0, frame = 16
+ 233              		@ frame_needed = 0, uses_anonymous_args = 0
+ 234 0000 00B5     		push	{lr}
+ 235              		.cfi_def_cfa_offset 4
+ 236              		.cfi_offset 14, -4
+ 237 0002 85B0     		sub	sp, sp, #20
+ 238              		.cfi_def_cfa_offset 24
+ 239 0004 0346     		mov	r3, r0
+ 240 0006 0A46     		mov	r2, r1
+ 241 0008 ADF80630 		strh	r3, [sp, #6]	@ movhi
+ 242 000c 1346     		mov	r3, r2	@ movhi
+ 243 000e ADF80430 		strh	r3, [sp, #4]	@ movhi
+  66:user_code/motion_control.c ****     int16_t speed = (left_speed + right_speed) / 2;
+ 244              		.loc 1 66 33
+ 245 0012 BDF90620 		ldrsh	r2, [sp, #6]
+ 246 0016 BDF90430 		ldrsh	r3, [sp, #4]
+ 247 001a 1344     		add	r3, r3, r2
+ 248              		.loc 1 66 48
+ 249 001c 002B     		cmp	r3, #0
+ 250 001e 00DA     		bge	.L21
+ 251 0020 0133     		adds	r3, r3, #1
+ 252              	.L21:
+ 253 0022 5B10     		asrs	r3, r3, #1
+ 254              		.loc 1 66 13
+ 255 0024 ADF80E30 		strh	r3, [sp, #14]	@ movhi
+  67:user_code/motion_control.c **** 
+  68:user_code/motion_control.c ****     if (speed > 100)  speed = 100;
+ 256              		.loc 1 68 8
+ 257 0028 BDF90E30 		ldrsh	r3, [sp, #14]
+ 258 002c 642B     		cmp	r3, #100
+ 259 002e 02DD     		ble	.L22
+ 260              		.loc 1 68 29 discriminator 1
+ 261 0030 6423     		movs	r3, #100
+ 262 0032 ADF80E30 		strh	r3, [sp, #14]	@ movhi
+ 263              	.L22:
+  69:user_code/motion_control.c ****     if (speed < -100) speed = -100;
+ 264              		.loc 1 69 8
+ 265 0036 BDF90E30 		ldrsh	r3, [sp, #14]
+ 266 003a 13F1640F 		cmn	r3, #100
+ 267 003e 03DA     		bge	.L23
+ 268              		.loc 1 69 29 discriminator 1
+ 269 0040 4FF69C73 		movw	r3, #65436
+ 270 0044 ADF80E30 		strh	r3, [sp, #14]	@ movhi
+ 271              	.L23:
+  70:user_code/motion_control.c **** 
+  71:user_code/motion_control.c ****     if (speed >= 0) // 前进或停止
+ 272              		.loc 1 71 8
+ 273 0048 BDF90E30 		ldrsh	r3, [sp, #14]
+ 274 004c 002B     		cmp	r3, #0
+ 275 004e 17DB     		blt	.L24
+ 276              	.LBB2:
+  72:user_code/motion_control.c ****     {
+  73:user_code/motion_control.c ****         // 1. [已修正] 设置方向为前进
+  74:user_code/motion_control.c ****         zf_gpio_set_level(MOTOR_DIR_PIN, MOTOR_DIR_FORWARD);
+ 277              		.loc 1 74 9
+ 278 0050 0121     		movs	r1, #1
+ 279 0052 8220     		movs	r0, #130
+ 280 0054 FFF7FEFF 		bl	zf_gpio_set_level
+  75:user_code/motion_control.c **** 
+  76:user_code/motion_control.c ****         // 2. 设置PWM占空比
+  77:user_code/motion_control.c ****         uint16_t duty = (uint16_t)(speed * 100);
+ 281              		.loc 1 77 25
+ 282 0058 BDF80E30 		ldrh	r3, [sp, #14]
+ 283              		.loc 1 77 18
+ 284 005c 1A46     		mov	r2, r3	@ movhi
+ 285 005e 9200     		lsls	r2, r2, #2
+ 286 0060 1344     		add	r3, r3, r2
+ 287 0062 1A46     		mov	r2, r3	@ movhi
+ 288 0064 9100     		lsls	r1, r2, #2
+ 289 0066 1A46     		mov	r2, r3	@ movhi
+ 290 0068 0B46     		mov	r3, r1	@ movhi
+ 291 006a 1344     		add	r3, r3, r2
+ 292 006c 9B00     		lsls	r3, r3, #2
+ 293 006e ADF80A30 		strh	r3, [sp, #10]	@ movhi
+  78:user_code/motion_control.c ****         bsp_pwm_set_duty(MOTOR_PWM_CH, duty);
+ 294              		.loc 1 78 9
+ 295 0072 BDF80A30 		ldrh	r3, [sp, #10]
+ 296 0076 1946     		mov	r1, r3
+ 297 0078 0420     		movs	r0, #4
+ 298 007a FFF7FEFF 		bl	bsp_pwm_set_duty
+ 299              	.LBE2:
+  79:user_code/motion_control.c ****     }
+  80:user_code/motion_control.c ****     else // 后退
+  81:user_code/motion_control.c ****     {
+  82:user_code/motion_control.c ****         // 1. [已修正] 设置方向为后退
+  83:user_code/motion_control.c ****         zf_gpio_set_level(MOTOR_DIR_PIN, MOTOR_DIR_REVERSE);
+  84:user_code/motion_control.c **** 
+  85:user_code/motion_control.c ****         // 2. 设置PWM占空比
+  86:user_code/motion_control.c ****         uint16_t duty = (uint16_t)(abs(speed) * 100);
+  87:user_code/motion_control.c ****         bsp_pwm_set_duty(MOTOR_PWM_CH, duty);
+  88:user_code/motion_control.c ****     }
+  89:user_code/motion_control.c **** }
+ 300              		.loc 1 89 1
+ 301 007e 1AE0     		b	.L26
+ 302              	.L24:
+ 303              	.LBB3:
+  83:user_code/motion_control.c **** 
+ 304              		.loc 1 83 9
+ 305 0080 0021     		movs	r1, #0
+ 306 0082 8220     		movs	r0, #130
+ 307 0084 FFF7FEFF 		bl	zf_gpio_set_level
+  86:user_code/motion_control.c ****         bsp_pwm_set_duty(MOTOR_PWM_CH, duty);
+ 308              		.loc 1 86 36
+ 309 0088 BDF90E30 		ldrsh	r3, [sp, #14]
+ 310 008c 002B     		cmp	r3, #0
+ 311 008e B8BF     		it	lt
+ 312 0090 5B42     		rsblt	r3, r3, #0
+ 313 0092 9BB2     		uxth	r3, r3
+  86:user_code/motion_control.c ****         bsp_pwm_set_duty(MOTOR_PWM_CH, duty);
+ 314              		.loc 1 86 18
+ 315 0094 1A46     		mov	r2, r3	@ movhi
+ 316 0096 9200     		lsls	r2, r2, #2
+ 317 0098 1344     		add	r3, r3, r2
+ 318 009a 1A46     		mov	r2, r3	@ movhi
+ 319 009c 9100     		lsls	r1, r2, #2
+ 320 009e 1A46     		mov	r2, r3	@ movhi
+ 321 00a0 0B46     		mov	r3, r1	@ movhi
+ 322 00a2 1344     		add	r3, r3, r2
+ 323 00a4 9B00     		lsls	r3, r3, #2
+ 324 00a6 ADF80C30 		strh	r3, [sp, #12]	@ movhi
+  87:user_code/motion_control.c ****     }
+ 325              		.loc 1 87 9
+ 326 00aa BDF80C30 		ldrh	r3, [sp, #12]
+ 327 00ae 1946     		mov	r1, r3
+ 328 00b0 0420     		movs	r0, #4
+ 329 00b2 FFF7FEFF 		bl	bsp_pwm_set_duty
+ 330              	.L26:
+ 331              	.LBE3:
+ 332              		.loc 1 89 1
+ 333 00b6 00BF     		nop
+ 334 00b8 05B0     		add	sp, sp, #20
+ 335              		.cfi_def_cfa_offset 4
+ 336              		@ sp needed
+ 337 00ba 5DF804FB 		ldr	pc, [sp], #4
+ 338              		.cfi_endproc
+ 339              	.LFE485:
+ 341 00be 00BF     		.section	.text.motion_set_motor_speed_closedloop,"ax",%progbits
+ 342              		.align	1
+ 343              		.p2align 4,,15
+ 344              		.global	motion_set_motor_speed_closedloop
+ 345              		.syntax unified
+ 346              		.thumb
+ 347              		.thumb_func
+ 349              	motion_set_motor_speed_closedloop:
+ 350              	.LFB486:
+  90:user_code/motion_control.c **** 
+  91:user_code/motion_control.c **** void motion_set_motor_speed_closedloop(float left_target_speed, float right_target_speed)
+  92:user_code/motion_control.c **** {
+ 351              		.loc 1 92 1
+ 352              		.cfi_startproc
+ 353              		@ args = 0, pretend = 0, frame = 8
+ 354              		@ frame_needed = 0, uses_anonymous_args = 0
+ 355              		@ link register save eliminated.
+ 356 0000 82B0     		sub	sp, sp, #8
+ 357              		.cfi_def_cfa_offset 8
+ 358 0002 8DED010A 		vstr.32	s0, [sp, #4]
+ 359 0006 CDED000A 		vstr.32	s1, [sp]
+  93:user_code/motion_control.c ****     (void)left_target_speed;
+  94:user_code/motion_control.c ****     (void)right_target_speed;
+  95:user_code/motion_control.c ****     // 待实现
+  96:user_code/motion_control.c **** }
+ 360              		.loc 1 96 1
+ 361 000a 00BF     		nop
+ 362 000c 02B0     		add	sp, sp, #8
+ 363              		.cfi_def_cfa_offset 0
+ 364              		@ sp needed
+ 365 000e 7047     		bx	lr
+ 366              		.cfi_endproc
+ 367              	.LFE486:
+ 369              		.text
+ 370              	.Letext0:
+ 371              		.file 2 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 372              		.file 3 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 373              		.file 4 "libraries/zf_driver/zf_driver_gpio.h"
+ 374              		.file 5 "user_code/bsp_PWM.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 motion_control.c
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:19     .text.map_value:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:25     .text.map_value:00000000 map_value
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:69     .text.motion_control_init:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:76     .text.motion_control_init:00000000 motion_control_init
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:120    .text.motion_set_servo_angle:00000000 motion_set_servo_angle
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:228    .text.motion_set_motor_speed_openloop:00000000 motion_set_motor_speed_openloop
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:108    .text.motion_control_init:0000002c $d
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:113    .text.motion_set_servo_angle:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:211    .text.motion_set_servo_angle:000000c4 $d
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:221    .text.motion_set_motor_speed_openloop:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:342    .text.motion_set_motor_speed_closedloop:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccLOEDFk.s:349    .text.motion_set_motor_speed_closedloop:00000000 motion_set_motor_speed_closedloop
+                           .group:00000000 wm4.0.1ea29c7543256e0887205fa7f8c557c8
+                           .group:00000000 wm4._newlib_version.h.4.bfdf54b0af045d4a71376ae00f63a22c
+                           .group:00000000 wm4.newlib.h.18.1c9fedb6b3cd797cff253cc0fd593ef2
+                           .group:00000000 wm4.ieeefp.h.77.2bc94c1d1ed8b02df437510a04ac1e45
+                           .group:00000000 wm4.features.h.22.026edb2397769f4ae13f35900dbdb560
+                           .group:00000000 wm4.config.h.224.c701144a7b0518c6ee9b9b5465b79f81
+                           .group:00000000 wm4._ansi.h.31.de524f58584151836e90d8620a16f8e8
+                           .group:00000000 wm4.stdio.h.31.7c0e28c411445f3f9c5b11accf882760
+                           .group:00000000 wm4._default_types.h.6.959254cf5f09734ea7516c89e8bb21bd
+                           .group:00000000 wm4.stddef.h.181.c3f52a3b0f4c288bddb5dda1562858e2
+                           .group:00000000 wm4.cdefs.h.49.a54b2d5c07711bc7320a3fea9f12cb56
+                           .group:00000000 wm4.stddef.h.39.c161261b198ee3a963897077fd6fa59f
+                           .group:00000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:00000000 wm4._types.h.20.dd0d04dca3800a0d2a6129b87f3adbb2
+                           .group:00000000 wm4.stddef.h.155.3588ebfdd1e8c7ede80509bb9c3b8009
+                           .group:00000000 wm4._types.h.127.34941de1b2539d59d5cac00e0dd27a45
+                           .group:00000000 wm4.reent.h.17.e292bf8b0bec6c96e131a54347145a30
+                           .group:00000000 wm4.lock.h.2.1461d1fff82dffe8bfddc23307f6484f
+                           .group:00000000 wm4.reent.h.77.dcd6129ff07fe81bd5636db29abe53b2
+                           .group:00000000 wm4.types.h.40.8b6acba56cefbb11746718204edc8f5e
+                           .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
+                           .group:00000000 wm4._endian.h.31.65a10590763c3dde1ac4a7f66d7d4891
+                           .group:00000000 wm4.endian.h.9.49f3a4695c1b61e8a0808de3c4a106cb
+                           .group:00000000 wm4._timeval.h.32.bec3221fa7a9bb0bdde696c9c57e47d2
+                           .group:00000000 wm4.timespec.h.41.d855182eb0e690443ab8651bcedca6e1
+                           .group:00000000 wm4.select.h.19.40cd3f2bfc456b193b790c2754690ebf
+                           .group:00000000 wm4.types.h.51.5571ec98f267d17d3c670b7a3ba33afa
+                           .group:00000000 wm4.sched.h.22.c60982713a5c428609783c78f9c78d95
+                           .group:00000000 wm4._pthreadtypes.h.36.fcee9961c35163dde6267ef772ad1972
+                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:00000000 wm4.stdio.h.81.932d0c162786b883f622b8d05c120c78
+                           .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
+                           .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.string.h.8.c4b8571ce60dff2817f43fec8b86aecd
+                           .group:00000000 wm4.stddef.h.155.ba788add86a0e365f264484f110c3c29
+                           .group:00000000 wm4.sr5e1xx.h.22.e5c808533cc52ed19fb0830cd7d98924
+                           .group:00000000 wm4.cmsis_version.h.32.0f826810625204eca22a19868bdc7586
+                           .group:00000000 wm4.core_cm7.h.66.8ab2de36917d6fcae18019067fda13e0
+                           .group:00000000 wm4.cmsis_gcc.h.26.498d0ad17a45fc9ef20fdc01caf02259
+                           .group:00000000 wm4.core_cm7.h.174.43edb295ecdaadad738f48ba6011ffad
+                           .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
+                           .group:00000000 wm4.cachel1_armv7.h.32.abd77761a989e008b0c60891114a33c7
+                           .group:00000000 wm4.SR5E1_ADC.h.14.21608e6aff125ba995dd767d6d8dc311
+                           .group:00000000 wm4.SR5E1_CEM.h.14.01fe5742c8f1ae35b1f3af05932f702e
+                           .group:00000000 wm4.SR5E1_CMU.h.14.2617b38b159abe38028862394531e06d
+                           .group:00000000 wm4.SR5E1_COMP.h.14.4b6fdfe4f5f7fd9bedf3a99b98bdf4cd
+                           .group:00000000 wm4.SR5E1_CORDIC.h.14.354fbf7c9eaf6963d38eaa25cf28ffe8
+                           .group:00000000 wm4.SR5E1_CRC.h.14.c64d0f7767671ddb92e9ead0a1162100
+                           .group:00000000 wm4.SR5E1_DAC.h.14.8c26a0ff04b0cfeb55306cc3f22187b8
+                           .group:00000000 wm4.SR5E1_DBGMCU.h.14.427df893d53a8044654f017ba01c25ed
+                           .group:00000000 wm4.SR5E1_DMA.h.14.a7f9a92f844b40a86965798c2e64240b
+                           .group:00000000 wm4.SR5E1_DMAMUX.h.14.471b3b4dfd4d41515f1df49493698866
+                           .group:00000000 wm4.SR5E1_EXTI.h.14.a325ea3fe89cd84894660551c33241ea
+                           .group:00000000 wm4.SR5E1_FCCU.h.14.0ebf0f0f36e079d28613ad2c80e17e23
+                           .group:00000000 wm4.SR5E1_FDCAN.h.14.ac57101fad5dbc798bfb93f34c899de7
+                           .group:00000000 wm4.SR5E1_FLASH_REG_ITF.h.14.d23d1d44923f9b20b8c8fdb51d66aefd
+                           .group:00000000 wm4.SR5E1_GPIO.h.14.1c84071e130d7c64b62470ab0e18a1f1
+                           .group:00000000 wm4.SR5E1_HRTIM.h.24.03932387d2522e6bd5c772a4edaf2f5d
+                           .group:00000000 wm4.SR5E1_HSEM.h.14.cbe70eee519f01b16452c3f8c99d8df1
+                           .group:00000000 wm4.SR5E1_I2C.h.14.350ba3e0f4fd57828457efa80135c36c
+                           .group:00000000 wm4.SR5E1_IMA.h.14.62b7088985ab2b7ce9b030a02daa1f7d
+                           .group:00000000 wm4.SR5E1_IWDG.h.14.20b7c5f05cf7ae94464c360d7af3660d
+                           .group:00000000 wm4.SR5E1_MEMU.h.14.04bad7ae4c52ce334a4fc900aad2ae5b
+                           .group:00000000 wm4.SR5E1_NVM_CTRL.h.14.5f442617f0628d4f16258f211c614ef9
+                           .group:00000000 wm4.SR5E1_PLLDIG.h.14.bd87a8e6917eee17dae2f312c8e5fa53
+                           .group:00000000 wm4.SR5E1_PMC_DIG.h.14.54173b566c6656344766ec4ef46c9281
+                           .group:00000000 wm4.SR5E1_RCC.h.14.56734803c71534de286e793a53649740
+                           .group:00000000 wm4.SR5E1_RTC.h.14.47037cbc7d8175dbf2be1dc0bb955e3f
+                           .group:00000000 wm4.SR5E1_SD_ADC.h.14.552b97d0b8f3c1fd4df6d8964b2f1a80
+                           .group:00000000 wm4.SR5E1_SMPU.h.14.8ce5bb6d5d7c579cd725f492f46e9085
+                           .group:00000000 wm4.SR5E1_SPI.h.14.42d52112e540f85ade4d9135f8b87d72
+                           .group:00000000 wm4.SR5E1_SSCM.h.14.8e6a2ad0ce5fca422fc3d69939b6125b
+                           .group:00000000 wm4.SR5E1_SYSCFG.h.14.02b969490118ce4069914b5e94f7ca65
+                           .group:00000000 wm4.SR5E1_TDM.h.14.a40ed7928cad243a57fd233fccf01ad2
+                           .group:00000000 wm4.SR5E1_TIM.h.14.05b8efc5395873619642d61a4b0b5a54
+                           .group:00000000 wm4.SR5E1_UART.h.14.eec3ab82b02b3bdb3de500483675b83f
+                           .group:00000000 wm4.SR5E1_WWDG.h.14.59b45efc70e442cc6ef03702aad4ad88
+                           .group:00000000 wm4.stdbool.h.29.07dce69c3b78884144b7f7bd19483461
+                           .group:00000000 wm4.typedefs.h.36.07fe3956b4e751037cfee70edcd0b397
+                           .group:00000000 wm4.irq_numbers.h.38.6294b95aed1bf7b3a2cda0eed8ce8f57
+                           .group:00000000 wm4.regs.h.23.2ac145b4f57126d16daed5fbd86d99c6
+                           .group:00000000 wm4.stdarg.h.31.3fa7b8f6daaa31edd1696c08c77f2a73
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.56.f4862cfbf4363a1db01842d5bdf72c18
+                           .group:00000000 wm4.zf_common_typedef.h.47.8c368673885c9d07221c267e15ab1069
+                           .group:00000000 wm4.zf_common_debug.h.33.6d362bbaa8a8ff23e6f5c0a30bf7361f
+                           .group:00000000 wm4.zf_common_fifo.h.33.e14e643902e26e4e65437b5b20e82793
+                           .group:00000000 wm4.zf_common_function.h.33.02bbfb055e8ee322bc4f8b14ea195da2
+                           .group:00000000 wm4.zf_common_memory.h.33.d43647290a4d62164ff2ec77cadb89d8
+                           .group:00000000 wm4.saradc.h.25.e5a70aef9ec4fddf35f2b7cc0c9cf1bc
+                           .group:00000000 wm4.gpio.h.25.d41a0c19fda8c2de42e666afb48ec15a
+                           .group:00000000 wm4.zf_driver_gpio.h.65.5a4d2084c62fed7c22fdca02e748c198
+                           .group:00000000 wm4.zf_driver_adc.h.64.349fb433626b42172b0e0fee038428ca
+                           .group:00000000 wm4.can.h.25.3cfccb6c630ada4f656cab597e231e58
+                           .group:00000000 wm4.dmamux.h.25.337aea179f6dbcc87c52aae26d38f76e
+                           .group:00000000 wm4.clock_cfg.h.24.0aed3cee9ecce947225a304181294191
+                           .group:00000000 wm4.clock.h.37.80236c5607fdd9eb9275e5111a4191c3
+                           .group:00000000 wm4.irq.h.37.78714f25754c8b09d1428599101f6cc7
+                           .group:00000000 wm4.dma.h.40.f77dd217a06ceba13a3cfdd4102a73c1
+                           .group:00000000 wm4.zf_driver_can.h.67.fd10d2fa867eb54a54d4b57027d73a60
+                           .group:00000000 wm4.tim.h.25.6e7ad96569e77a70a68b9b4cc59f54f2
+                           .group:00000000 wm4.zf_driver_timer.h.33.8df253b6990d9861816977209fb11e90
+                           .group:00000000 wm4.zf_driver_encoder.h.57.7e32999f25354fac086ca226b0c630d4
+                           .group:00000000 wm4.exti.h.25.21597c35d9630b0985ce88d2c41f4ea4
+                           .group:00000000 wm4.zf_driver_exti.h.59.1b02b8083e5295ef5baaf83905d59395
+                           .group:00000000 wm4.ssd_types.h.29.b861f4e6d39d333f931bfc05b964cb1c
+                           .group:00000000 wm4.ssd_C55.h.37.dad650468a97d71aff4dd65ca085590f
+                           .group:00000000 wm4.zf_driver_flash.h.59.db93fe574c35ea9e79030063fbb35a13
+                           .group:00000000 wm4.hrtim.h.25.1601aea9d4a0da1de8252dc444355251
+                           .group:00000000 wm4.zf_driver_hrtim.h.64.cd8d2bf3bf1c471ea59d9c61e4a721d7
+                           .group:00000000 wm4.zf_driver_interrupt.h.33.2c3660dcc36cb090bd75b8f180c14f27
+                           .group:00000000 wm4.zf_driver_pit.h.33.834ac720a62e09d5603a9557331e9049
+                           .group:00000000 wm4.zf_driver_pwm.h.33.7d80487064ca712231a453396685a551
+                           .group:00000000 wm4.zf_driver_rcc.h.33.4c228cf40a79e1b974b30d5a9a3a77a7
+                           .group:00000000 wm4.zf_driver_soft_iic.h.33.9067bd298084134f63c61c075f95fa2b
+                           .group:00000000 wm4.zf_driver_soft_spi.h.33.a938287c023905d97cafe56e4be63674
+                           .group:00000000 wm4.zf_driver_spi.h.62.950b1f52ed365034df2907601137b455
+                           .group:00000000 wm4.zf_driver_system.h.33.370922a9681b47d575d2c83d302a180b
+                           .group:00000000 wm4.bsp_uart.h.31.c709869491969cfdef8a75d6bfc161b7
+                           .group:00000000 wm4.zf_driver_uart.h.68.14c9cf719d9cd0f517e5a4bcb943af75
+                           .group:00000000 wm4.zf_device_imu_interface.h.40.344a2c93b973b58cee305ff406fc3e84
+                           .group:00000000 wm4.zf_device_imu660rb.h.37.b47c39afb47c89c2c82bd28e76457042
+                           .group:00000000 wm4.zf_device_imu963ra.h.37.e773f164af6f72dd1b0b6c1242bf99b4
+                           .group:00000000 wm4.zf_device_wireless_interface.h.40.da0a07f107014cb0888a26f281971a5b
+                           .group:00000000 wm4.zf_device_display_interface.h.79.d8df25e52245efbd97fd6415c8db0a72
+                           .group:00000000 wm4.zf_device_ips200.h.37.957fc5e8b291701a6f6b47207b045b77
+                           .group:00000000 wm4.math.h.13.b6595ad277a643a6127e1a4515a98f91
+                           .group:00000000 wm4.zf_device_gnss.h.66.39fe53860d2d190725612db126de8287
+                           .group:00000000 wm4.zf_device_key.h.45.b12f9096d8cc68f085b8fe9fe5b730db
+                           .group:00000000 wm4.zf_device_uart_receiver.h.43.9ac9496dcaa4780ef86d21fa439379b4
+                           .group:00000000 wm4.motion_control.h.14.d97db8f7a863ba9687d6573397dbabf7
+
+UNDEFINED SYMBOLS
+bsp_pwm_init
+zf_gpio_init
+bsp_pwm_set_duty
+zf_gpio_set_level

@@ -1,0 +1,444 @@
+   1              		.cpu cortex-m7
+   2              		.arch armv7e-m
+   3              		.fpu fpv5-d16
+   4              		.eabi_attribute 28, 1
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 6
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.file	"main_navigation_test.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.global	g_navigation_tick_count
+  19              		.section	.bss.g_navigation_tick_count,"aw",%nobits
+  20              		.align	2
+  23              	g_navigation_tick_count:
+  24 0000 00000000 		.space	4
+  25              		.section	.text.navigation_isr_callback,"ax",%progbits
+  26              		.align	1
+  27              		.p2align 4,,15
+  28              		.global	navigation_isr_callback
+  29              		.syntax unified
+  30              		.thumb
+  31              		.thumb_func
+  33              	navigation_isr_callback:
+  34              	.LFB482:
+  35              		.file 1 "src/main_navigation_test.c"
+   1:src/main_navigation_test.c **** /**************************************************************************************************
+   2:src/main_navigation_test.c ****  * 文件名称          main_navigation_test.c
+   3:src/main_navigation_test.c ****  * 功能描述          RTK自主导航系统的主测试程序
+   4:src/main_navigation_test.c ****  * 版本信息          V1.2 (修正编译警告)
+   5:src/main_navigation_test.c ****  * 开发环境          StellarStudio
+   6:src/main_navigation_test.c ****  * 适用平台          Stellar-SR5E1E3 (基于逐飞开源库)
+   7:src/main_navigation_test.c ****  **************************************************************************************************
+   8:src/main_navigation_test.c **** 
+   9:src/main_navigation_test.c **** #include "zf_libraries_headfile.h"
+  10:src/main_navigation_test.c **** 
+  11:src/main_navigation_test.c **** // 包含我们自己编写的所有核心模块头文件
+  12:src/main_navigation_test.c **** #include "bsp_uart.h"
+  13:src/main_navigation_test.c **** #include "bsp_rtk.h"
+  14:src/main_navigation_test.c **** #include "speed_control.h"
+  15:src/main_navigation_test.c **** #include "path_manager.h"   // path_manager.h 已经被包含了，很好
+  16:src/main_navigation_test.c **** 
+  17:src/main_navigation_test.c **** // [AI-MOD] 添加此行以解决 "implicit declaration" 警告
+  18:src/main_navigation_test.c **** // 因为本文件调用了 navigation_init() 和 navigation_run_once()，
+  19:src/main_navigation_test.c **** // 所以必须包含它们的声明文件 navigation.h
+  20:src/main_navigation_test.c **** #include "navigation.h"
+  21:src/main_navigation_test.c **** 
+  22:src/main_navigation_test.c **** // ================== 全局变量 ==================
+  23:src/main_navigation_test.c **** 
+  24:src/main_navigation_test.c **** volatile uint32_t g_navigation_tick_count = 0;
+  25:src/main_navigation_test.c **** 
+  26:src/main_navigation_test.c **** // ================== 中断服务程序 ==================
+  27:src/main_navigation_test.c **** 
+  28:src/main_navigation_test.c **** /**
+  29:src/main_navigation_test.c ****  * @brief  导航控制循环的中断服务程序 (ISR - Interrupt Service Routine)
+  30:src/main_navigation_test.c ****  */
+  31:src/main_navigation_test.c **** void navigation_isr_callback(uint32_t event, void *ptr)
+  32:src/main_navigation_test.c **** {
+  36              		.loc 1 32 1
+  37              		.cfi_startproc
+  38              		@ args = 0, pretend = 0, frame = 80
+  39              		@ frame_needed = 0, uses_anonymous_args = 0
+  40 0000 00B5     		push	{lr}
+  41              		.cfi_def_cfa_offset 4
+  42              		.cfi_offset 14, -4
+  43 0002 95B0     		sub	sp, sp, #84
+  44              		.cfi_def_cfa_offset 88
+  45 0004 0190     		str	r0, [sp, #4]
+  46 0006 0091     		str	r1, [sp]
+  33:src/main_navigation_test.c ****     (void)event;
+  34:src/main_navigation_test.c ****     (void)ptr;
+  35:src/main_navigation_test.c **** 
+  36:src/main_navigation_test.c ****     // 1. 调用RTK数据任务函数，检查并解析新数据
+  37:src/main_navigation_test.c ****     if (bsp_rtk_data_task())
+  47              		.loc 1 37 9
+  48 0008 FFF7FEFF 		bl	bsp_rtk_data_task
+  49 000c 0346     		mov	r3, r0
+  50              		.loc 1 37 8
+  51 000e 002B     		cmp	r3, #0
+  52 0010 07D0     		beq	.L2
+  53              	.LBB2:
+  38:src/main_navigation_test.c ****     {
+  39:src/main_navigation_test.c ****         // 2. 只有在确认有新的、有效的数据时，才执行导航计算
+  40:src/main_navigation_test.c ****         gnss_info_struct rtk_info = bsp_rtk_get_info();
+  54              		.loc 1 40 37
+  55 0012 02AB     		add	r3, sp, #8
+  56 0014 1846     		mov	r0, r3
+  57 0016 FFF7FEFF 		bl	bsp_rtk_get_info
+  41:src/main_navigation_test.c **** 
+  42:src/main_navigation_test.c ****         // 将这份新鲜的数据传递给导航计算函数
+  43:src/main_navigation_test.c ****         navigation_run_once(&rtk_info);
+  58              		.loc 1 43 9
+  59 001a 02AB     		add	r3, sp, #8
+  60 001c 1846     		mov	r0, r3
+  61 001e FFF7FEFF 		bl	navigation_run_once
+  62              	.L2:
+  63              	.LBE2:
+  44:src/main_navigation_test.c ****     }
+  45:src/main_navigation_test.c ****     // 如果 bsp_rtk_data_task() 返回false，本周期内不做任何导航计算
+  46:src/main_navigation_test.c **** 
+  47:src/main_navigation_test.c ****     // 3. 中断计数器自增
+  48:src/main_navigation_test.c ****     g_navigation_tick_count++;
+  64              		.loc 1 48 28
+  65 0022 044B     		ldr	r3, .L3
+  66 0024 1B68     		ldr	r3, [r3]
+  67 0026 0133     		adds	r3, r3, #1
+  68 0028 024A     		ldr	r2, .L3
+  69 002a 1360     		str	r3, [r2]
+  49:src/main_navigation_test.c **** }
+  70              		.loc 1 49 1
+  71 002c 00BF     		nop
+  72 002e 15B0     		add	sp, sp, #84
+  73              		.cfi_def_cfa_offset 4
+  74              		@ sp needed
+  75 0030 5DF804FB 		ldr	pc, [sp], #4
+  76              	.L4:
+  77              		.align	2
+  78              	.L3:
+  79 0034 00000000 		.word	g_navigation_tick_count
+  80              		.cfi_endproc
+  81              	.LFE482:
+  83              		.section	.rodata
+  84              		.align	2
+  85              	.LC0:
+  86 0000 0D0A3D3D 		.ascii	"\015\012==========================================="
+  86      3D3D3D3D 
+  86      3D3D3D3D 
+  86      3D3D3D3D 
+  86      3D3D3D3D 
+  87 002d 3D0D00   		.ascii	"=\015\000"
+  88              		.align	2
+  89              	.LC1:
+  90 0030 3D202020 		.ascii	"=       RTK Autonomous Navigation Test       =\015\000"
+  90      20202020 
+  90      52544B20 
+  90      4175746F 
+  90      6E6F6D6F 
+  91              		.align	2
+  92              	.LC2:
+  93 0060 3D3D3D3D 		.ascii	"============================================\015\000"
+  93      3D3D3D3D 
+  93      3D3D3D3D 
+  93      3D3D3D3D 
+  93      3D3D3D3D 
+  94 008e 0000     		.align	2
+  95              	.LC3:
+  96 0090 53797374 		.ascii	"System Initialized. Navigation ISR is running at 10"
+  96      656D2049 
+  96      6E697469 
+  96      616C697A 
+  96      65642E20 
+  97 00c3 487A2E0D 		.ascii	"Hz.\015\000"
+  97      00
+  98              		.align	2
+  99              	.LC4:
+ 100 00c8 506C6561 		.ascii	"Please ensure the vehicle is in a safe, open area.\015"
+ 100      73652065 
+ 100      6E737572 
+ 100      65207468 
+ 100      65207665 
+ 101 00fb 0A0D00   		.ascii	"\012\015\000"
+ 102              		.section	.text.main,"ax",%progbits
+ 103              		.align	1
+ 104              		.p2align 4,,15
+ 105              		.global	main
+ 106              		.syntax unified
+ 107              		.thumb
+ 108              		.thumb_func
+ 110              	main:
+ 111              	.LFB483:
+  50:src/main_navigation_test.c **** 
+  51:src/main_navigation_test.c **** // ================== 主函数 ==================
+  52:src/main_navigation_test.c **** 
+  53:src/main_navigation_test.c **** int main(void)
+  54:src/main_navigation_test.c **** {
+ 112              		.loc 1 54 1
+ 113              		.cfi_startproc
+ 114              		@ args = 0, pretend = 0, frame = 0
+ 115              		@ frame_needed = 0, uses_anonymous_args = 0
+ 116 0000 08B5     		push	{r3, lr}
+ 117              		.cfi_def_cfa_offset 8
+ 118              		.cfi_offset 3, -8
+ 119              		.cfi_offset 14, -4
+  55:src/main_navigation_test.c ****     // 1. 系统级初始化
+  56:src/main_navigation_test.c ****     zf_system_clock_init(SYSTEM_CLOCK_300M);
+ 120              		.loc 1 56 5
+ 121 0002 1348     		ldr	r0, .L7
+ 122 0004 FFF7FEFF 		bl	zf_system_clock_init
+  57:src/main_navigation_test.c ****     // [AI-COMMENT] 你的 bsp_uart_init 函数需要一个参数，假设是 BSP_UART_DEBUG
+  58:src/main_navigation_test.c ****     bsp_uart_init(BSP_UART_DEBUG, 460800);
+ 123              		.loc 1 58 5
+ 124 0008 4FF4E121 		mov	r1, #460800
+ 125 000c 0020     		movs	r0, #0
+ 126 000e FFF7FEFF 		bl	bsp_uart_init
+  59:src/main_navigation_test.c **** 
+  60:src/main_navigation_test.c ****     // 2. 运动与导航系统初始化
+  61:src/main_navigation_test.c ****     bsp_rtk_init();
+ 127              		.loc 1 61 5
+ 128 0012 FFF7FEFF 		bl	bsp_rtk_init
+  62:src/main_navigation_test.c ****     speed_control_init();
+ 129              		.loc 1 62 5
+ 130 0016 FFF7FEFF 		bl	speed_control_init
+  63:src/main_navigation_test.c ****     navigation_init(); // 调用 navigation_init
+ 131              		.loc 1 63 5
+ 132 001a FFF7FEFF 		bl	navigation_init
+  64:src/main_navigation_test.c **** 
+  65:src/main_navigation_test.c ****     // 3. 初始化并启动导航定时器中断 (10Hz)
+  66:src/main_navigation_test.c ****     zf_pit_ms_init(PIT_TIM5, 100, navigation_isr_callback, NULL);
+ 133              		.loc 1 66 5
+ 134 001e 0023     		movs	r3, #0
+ 135 0020 0C4A     		ldr	r2, .L7+4
+ 136 0022 6421     		movs	r1, #100
+ 137 0024 0320     		movs	r0, #3
+ 138 0026 FFF7FEFF 		bl	zf_pit_ms_init
+  67:src/main_navigation_test.c **** 
+  68:src/main_navigation_test.c ****     // 4. 打印启动信息
+  69:src/main_navigation_test.c ****     printf("\r\n============================================\r\n");
+ 139              		.loc 1 69 5
+ 140 002a 0B48     		ldr	r0, .L7+8
+ 141 002c FFF7FEFF 		bl	puts
+  70:src/main_navigation_test.c ****     printf("=       RTK Autonomous Navigation Test       =\r\n");
+ 142              		.loc 1 70 5
+ 143 0030 0A48     		ldr	r0, .L7+12
+ 144 0032 FFF7FEFF 		bl	puts
+  71:src/main_navigation_test.c ****     printf("============================================\r\n");
+ 145              		.loc 1 71 5
+ 146 0036 0A48     		ldr	r0, .L7+16
+ 147 0038 FFF7FEFF 		bl	puts
+  72:src/main_navigation_test.c ****     printf("System Initialized. Navigation ISR is running at 10Hz.\r\n");
+ 148              		.loc 1 72 5
+ 149 003c 0948     		ldr	r0, .L7+20
+ 150 003e FFF7FEFF 		bl	puts
+  73:src/main_navigation_test.c ****     printf("Please ensure the vehicle is in a safe, open area.\r\n\r\n");
+ 151              		.loc 1 73 5
+ 152 0042 0948     		ldr	r0, .L7+24
+ 153 0044 FFF7FEFF 		bl	puts
+ 154              	.L6:
+  74:src/main_navigation_test.c **** 
+  75:src/main_navigation_test.c ****     // 5. 主循环
+  76:src/main_navigation_test.c ****     for (;;)
+  77:src/main_navigation_test.c ****     {
+  78:src/main_navigation_test.c ****         // 可以在这里添加一些低优先级的任务，比如状态显示
+  79:src/main_navigation_test.c ****         zf_delay_ms(200);
+ 155              		.loc 1 79 9 discriminator 1
+ 156 0048 C820     		movs	r0, #200
+ 157 004a FFF7FEFF 		bl	zf_delay_ms
+ 158 004e FBE7     		b	.L6
+ 159              	.L8:
+ 160              		.align	2
+ 161              	.L7:
+ 162 0050 00A3E111 		.word	300000000
+ 163 0054 00000000 		.word	navigation_isr_callback
+ 164 0058 00000000 		.word	.LC0
+ 165 005c 30000000 		.word	.LC1
+ 166 0060 60000000 		.word	.LC2
+ 167 0064 90000000 		.word	.LC3
+ 168 0068 C8000000 		.word	.LC4
+ 169              		.cfi_endproc
+ 170              	.LFE483:
+ 172              		.text
+ 173              	.Letext0:
+ 174              		.file 2 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 175              		.file 3 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 176              		.file 4 "libraries/zf_common/zf_common_typedef.h"
+ 177              		.file 5 "C:/StellarStudio-7.1/SDKS/StellarESDK-1.7.0/Modules/Platform/MCU/include/sr5e1/sr5e1xx.h"
+ 178              		.file 6 "libraries/zf_driver/zf_driver_gpio.h"
+ 179              		.file 7 "libraries/zf_driver/zf_driver_adc.h"
+ 180              		.file 8 "libraries/zf_driver/zf_driver_can.h"
+ 181              		.file 9 "libraries/zf_driver/zf_driver_encoder.h"
+ 182              		.file 10 "libraries/zf_driver/zf_driver_exti.h"
+ 183              		.file 11 "libraries/zf_driver/zf_driver_hrtim.h"
+ 184              		.file 12 "libraries/zf_driver/zf_driver_pit.h"
+ 185              		.file 13 "libraries/zf_driver/zf_driver_pwm.h"
+ 186              		.file 14 "libraries/zf_driver/zf_driver_spi.h"
+ 187              		.file 15 "libraries/zf_driver/zf_driver_system.h"
+ 188              		.file 16 "libraries/zf_driver/../../user_code/bsp_uart.h"
+ 189              		.file 17 "libraries/zf_driver/zf_driver_uart.h"
+ 190              		.file 18 "libraries/zf_device/zf_device_imu_interface.h"
+ 191              		.file 19 "libraries/zf_device/zf_device_wireless_interface.h"
+ 192              		.file 20 "libraries/zf_device/zf_device_display_interface.h"
+ 193              		.file 21 "libraries/zf_device/zf_device_gnss.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 main_navigation_test.c
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:23     .bss.g_navigation_tick_count:00000000 g_navigation_tick_count
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:20     .bss.g_navigation_tick_count:00000000 $d
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:26     .text.navigation_isr_callback:00000000 $t
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:33     .text.navigation_isr_callback:00000000 navigation_isr_callback
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:79     .text.navigation_isr_callback:00000034 $d
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:84     .rodata:00000000 $d
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:103    .text.main:00000000 $t
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:110    .text.main:00000000 main
+C:\Users\20766\AppData\Local\Temp\cczRDNGc.s:162    .text.main:00000050 $d
+                           .group:00000000 wm4.0.1ea29c7543256e0887205fa7f8c557c8
+                           .group:00000000 wm4._newlib_version.h.4.bfdf54b0af045d4a71376ae00f63a22c
+                           .group:00000000 wm4.newlib.h.18.1c9fedb6b3cd797cff253cc0fd593ef2
+                           .group:00000000 wm4.ieeefp.h.77.2bc94c1d1ed8b02df437510a04ac1e45
+                           .group:00000000 wm4.features.h.22.026edb2397769f4ae13f35900dbdb560
+                           .group:00000000 wm4.config.h.224.c701144a7b0518c6ee9b9b5465b79f81
+                           .group:00000000 wm4._ansi.h.31.de524f58584151836e90d8620a16f8e8
+                           .group:00000000 wm4.stdio.h.31.7c0e28c411445f3f9c5b11accf882760
+                           .group:00000000 wm4._default_types.h.6.959254cf5f09734ea7516c89e8bb21bd
+                           .group:00000000 wm4.stddef.h.181.c3f52a3b0f4c288bddb5dda1562858e2
+                           .group:00000000 wm4.cdefs.h.49.a54b2d5c07711bc7320a3fea9f12cb56
+                           .group:00000000 wm4.stddef.h.39.c161261b198ee3a963897077fd6fa59f
+                           .group:00000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:00000000 wm4._types.h.20.dd0d04dca3800a0d2a6129b87f3adbb2
+                           .group:00000000 wm4.stddef.h.155.3588ebfdd1e8c7ede80509bb9c3b8009
+                           .group:00000000 wm4._types.h.127.34941de1b2539d59d5cac00e0dd27a45
+                           .group:00000000 wm4.reent.h.17.e292bf8b0bec6c96e131a54347145a30
+                           .group:00000000 wm4.lock.h.2.1461d1fff82dffe8bfddc23307f6484f
+                           .group:00000000 wm4.reent.h.77.dcd6129ff07fe81bd5636db29abe53b2
+                           .group:00000000 wm4.types.h.40.8b6acba56cefbb11746718204edc8f5e
+                           .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
+                           .group:00000000 wm4._endian.h.31.65a10590763c3dde1ac4a7f66d7d4891
+                           .group:00000000 wm4.endian.h.9.49f3a4695c1b61e8a0808de3c4a106cb
+                           .group:00000000 wm4._timeval.h.32.bec3221fa7a9bb0bdde696c9c57e47d2
+                           .group:00000000 wm4.timespec.h.41.d855182eb0e690443ab8651bcedca6e1
+                           .group:00000000 wm4.select.h.19.40cd3f2bfc456b193b790c2754690ebf
+                           .group:00000000 wm4.types.h.51.5571ec98f267d17d3c670b7a3ba33afa
+                           .group:00000000 wm4.sched.h.22.c60982713a5c428609783c78f9c78d95
+                           .group:00000000 wm4._pthreadtypes.h.36.fcee9961c35163dde6267ef772ad1972
+                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:00000000 wm4.stdio.h.81.932d0c162786b883f622b8d05c120c78
+                           .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
+                           .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.string.h.8.c4b8571ce60dff2817f43fec8b86aecd
+                           .group:00000000 wm4.stddef.h.155.ba788add86a0e365f264484f110c3c29
+                           .group:00000000 wm4.sr5e1xx.h.22.e5c808533cc52ed19fb0830cd7d98924
+                           .group:00000000 wm4.cmsis_version.h.32.0f826810625204eca22a19868bdc7586
+                           .group:00000000 wm4.core_cm7.h.66.8ab2de36917d6fcae18019067fda13e0
+                           .group:00000000 wm4.cmsis_gcc.h.26.498d0ad17a45fc9ef20fdc01caf02259
+                           .group:00000000 wm4.core_cm7.h.174.43edb295ecdaadad738f48ba6011ffad
+                           .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
+                           .group:00000000 wm4.cachel1_armv7.h.32.abd77761a989e008b0c60891114a33c7
+                           .group:00000000 wm4.SR5E1_ADC.h.14.21608e6aff125ba995dd767d6d8dc311
+                           .group:00000000 wm4.SR5E1_CEM.h.14.01fe5742c8f1ae35b1f3af05932f702e
+                           .group:00000000 wm4.SR5E1_CMU.h.14.2617b38b159abe38028862394531e06d
+                           .group:00000000 wm4.SR5E1_COMP.h.14.4b6fdfe4f5f7fd9bedf3a99b98bdf4cd
+                           .group:00000000 wm4.SR5E1_CORDIC.h.14.354fbf7c9eaf6963d38eaa25cf28ffe8
+                           .group:00000000 wm4.SR5E1_CRC.h.14.c64d0f7767671ddb92e9ead0a1162100
+                           .group:00000000 wm4.SR5E1_DAC.h.14.8c26a0ff04b0cfeb55306cc3f22187b8
+                           .group:00000000 wm4.SR5E1_DBGMCU.h.14.427df893d53a8044654f017ba01c25ed
+                           .group:00000000 wm4.SR5E1_DMA.h.14.a7f9a92f844b40a86965798c2e64240b
+                           .group:00000000 wm4.SR5E1_DMAMUX.h.14.471b3b4dfd4d41515f1df49493698866
+                           .group:00000000 wm4.SR5E1_EXTI.h.14.a325ea3fe89cd84894660551c33241ea
+                           .group:00000000 wm4.SR5E1_FCCU.h.14.0ebf0f0f36e079d28613ad2c80e17e23
+                           .group:00000000 wm4.SR5E1_FDCAN.h.14.ac57101fad5dbc798bfb93f34c899de7
+                           .group:00000000 wm4.SR5E1_FLASH_REG_ITF.h.14.d23d1d44923f9b20b8c8fdb51d66aefd
+                           .group:00000000 wm4.SR5E1_GPIO.h.14.1c84071e130d7c64b62470ab0e18a1f1
+                           .group:00000000 wm4.SR5E1_HRTIM.h.24.03932387d2522e6bd5c772a4edaf2f5d
+                           .group:00000000 wm4.SR5E1_HSEM.h.14.cbe70eee519f01b16452c3f8c99d8df1
+                           .group:00000000 wm4.SR5E1_I2C.h.14.350ba3e0f4fd57828457efa80135c36c
+                           .group:00000000 wm4.SR5E1_IMA.h.14.62b7088985ab2b7ce9b030a02daa1f7d
+                           .group:00000000 wm4.SR5E1_IWDG.h.14.20b7c5f05cf7ae94464c360d7af3660d
+                           .group:00000000 wm4.SR5E1_MEMU.h.14.04bad7ae4c52ce334a4fc900aad2ae5b
+                           .group:00000000 wm4.SR5E1_NVM_CTRL.h.14.5f442617f0628d4f16258f211c614ef9
+                           .group:00000000 wm4.SR5E1_PLLDIG.h.14.bd87a8e6917eee17dae2f312c8e5fa53
+                           .group:00000000 wm4.SR5E1_PMC_DIG.h.14.54173b566c6656344766ec4ef46c9281
+                           .group:00000000 wm4.SR5E1_RCC.h.14.56734803c71534de286e793a53649740
+                           .group:00000000 wm4.SR5E1_RTC.h.14.47037cbc7d8175dbf2be1dc0bb955e3f
+                           .group:00000000 wm4.SR5E1_SD_ADC.h.14.552b97d0b8f3c1fd4df6d8964b2f1a80
+                           .group:00000000 wm4.SR5E1_SMPU.h.14.8ce5bb6d5d7c579cd725f492f46e9085
+                           .group:00000000 wm4.SR5E1_SPI.h.14.42d52112e540f85ade4d9135f8b87d72
+                           .group:00000000 wm4.SR5E1_SSCM.h.14.8e6a2ad0ce5fca422fc3d69939b6125b
+                           .group:00000000 wm4.SR5E1_SYSCFG.h.14.02b969490118ce4069914b5e94f7ca65
+                           .group:00000000 wm4.SR5E1_TDM.h.14.a40ed7928cad243a57fd233fccf01ad2
+                           .group:00000000 wm4.SR5E1_TIM.h.14.05b8efc5395873619642d61a4b0b5a54
+                           .group:00000000 wm4.SR5E1_UART.h.14.eec3ab82b02b3bdb3de500483675b83f
+                           .group:00000000 wm4.SR5E1_WWDG.h.14.59b45efc70e442cc6ef03702aad4ad88
+                           .group:00000000 wm4.stdbool.h.29.07dce69c3b78884144b7f7bd19483461
+                           .group:00000000 wm4.typedefs.h.36.07fe3956b4e751037cfee70edcd0b397
+                           .group:00000000 wm4.irq_numbers.h.38.6294b95aed1bf7b3a2cda0eed8ce8f57
+                           .group:00000000 wm4.regs.h.23.2ac145b4f57126d16daed5fbd86d99c6
+                           .group:00000000 wm4.stdarg.h.31.3fa7b8f6daaa31edd1696c08c77f2a73
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.56.f4862cfbf4363a1db01842d5bdf72c18
+                           .group:00000000 wm4.zf_common_typedef.h.47.8c368673885c9d07221c267e15ab1069
+                           .group:00000000 wm4.zf_common_debug.h.33.6d362bbaa8a8ff23e6f5c0a30bf7361f
+                           .group:00000000 wm4.zf_common_fifo.h.33.e14e643902e26e4e65437b5b20e82793
+                           .group:00000000 wm4.zf_common_function.h.33.02bbfb055e8ee322bc4f8b14ea195da2
+                           .group:00000000 wm4.zf_common_memory.h.33.d43647290a4d62164ff2ec77cadb89d8
+                           .group:00000000 wm4.saradc.h.25.e5a70aef9ec4fddf35f2b7cc0c9cf1bc
+                           .group:00000000 wm4.gpio.h.25.d41a0c19fda8c2de42e666afb48ec15a
+                           .group:00000000 wm4.zf_driver_gpio.h.65.5a4d2084c62fed7c22fdca02e748c198
+                           .group:00000000 wm4.zf_driver_adc.h.64.349fb433626b42172b0e0fee038428ca
+                           .group:00000000 wm4.can.h.25.3cfccb6c630ada4f656cab597e231e58
+                           .group:00000000 wm4.dmamux.h.25.337aea179f6dbcc87c52aae26d38f76e
+                           .group:00000000 wm4.clock_cfg.h.24.0aed3cee9ecce947225a304181294191
+                           .group:00000000 wm4.clock.h.37.80236c5607fdd9eb9275e5111a4191c3
+                           .group:00000000 wm4.irq.h.37.78714f25754c8b09d1428599101f6cc7
+                           .group:00000000 wm4.dma.h.40.f77dd217a06ceba13a3cfdd4102a73c1
+                           .group:00000000 wm4.zf_driver_can.h.67.fd10d2fa867eb54a54d4b57027d73a60
+                           .group:00000000 wm4.tim.h.25.6e7ad96569e77a70a68b9b4cc59f54f2
+                           .group:00000000 wm4.zf_driver_timer.h.33.8df253b6990d9861816977209fb11e90
+                           .group:00000000 wm4.zf_driver_encoder.h.57.7e32999f25354fac086ca226b0c630d4
+                           .group:00000000 wm4.exti.h.25.21597c35d9630b0985ce88d2c41f4ea4
+                           .group:00000000 wm4.zf_driver_exti.h.59.1b02b8083e5295ef5baaf83905d59395
+                           .group:00000000 wm4.ssd_types.h.29.b861f4e6d39d333f931bfc05b964cb1c
+                           .group:00000000 wm4.ssd_C55.h.37.dad650468a97d71aff4dd65ca085590f
+                           .group:00000000 wm4.zf_driver_flash.h.59.db93fe574c35ea9e79030063fbb35a13
+                           .group:00000000 wm4.hrtim.h.25.1601aea9d4a0da1de8252dc444355251
+                           .group:00000000 wm4.zf_driver_hrtim.h.64.cd8d2bf3bf1c471ea59d9c61e4a721d7
+                           .group:00000000 wm4.zf_driver_interrupt.h.33.2c3660dcc36cb090bd75b8f180c14f27
+                           .group:00000000 wm4.zf_driver_pit.h.33.834ac720a62e09d5603a9557331e9049
+                           .group:00000000 wm4.zf_driver_pwm.h.33.7d80487064ca712231a453396685a551
+                           .group:00000000 wm4.zf_driver_rcc.h.33.4c228cf40a79e1b974b30d5a9a3a77a7
+                           .group:00000000 wm4.zf_driver_soft_iic.h.33.9067bd298084134f63c61c075f95fa2b
+                           .group:00000000 wm4.zf_driver_soft_spi.h.33.a938287c023905d97cafe56e4be63674
+                           .group:00000000 wm4.zf_driver_spi.h.62.950b1f52ed365034df2907601137b455
+                           .group:00000000 wm4.zf_driver_system.h.33.370922a9681b47d575d2c83d302a180b
+                           .group:00000000 wm4.bsp_uart.h.31.c709869491969cfdef8a75d6bfc161b7
+                           .group:00000000 wm4.zf_driver_uart.h.68.14c9cf719d9cd0f517e5a4bcb943af75
+                           .group:00000000 wm4.zf_device_imu_interface.h.40.344a2c93b973b58cee305ff406fc3e84
+                           .group:00000000 wm4.zf_device_imu660rb.h.37.b47c39afb47c89c2c82bd28e76457042
+                           .group:00000000 wm4.zf_device_imu963ra.h.37.e773f164af6f72dd1b0b6c1242bf99b4
+                           .group:00000000 wm4.zf_device_wireless_interface.h.40.da0a07f107014cb0888a26f281971a5b
+                           .group:00000000 wm4.zf_device_display_interface.h.79.d8df25e52245efbd97fd6415c8db0a72
+                           .group:00000000 wm4.zf_device_ips200.h.37.957fc5e8b291701a6f6b47207b045b77
+                           .group:00000000 wm4.math.h.13.b6595ad277a643a6127e1a4515a98f91
+                           .group:00000000 wm4.zf_device_gnss.h.66.39fe53860d2d190725612db126de8287
+                           .group:00000000 wm4.zf_device_key.h.45.b12f9096d8cc68f085b8fe9fe5b730db
+                           .group:00000000 wm4.zf_device_uart_receiver.h.43.9ac9496dcaa4780ef86d21fa439379b4
+                           .group:00000000 wm4.motion_control.h.14.d97db8f7a863ba9687d6573397dbabf7
+                           .group:00000000 wm4.speed_control.h.19.1bd57169cbb030f02e59b9c353c1c56f
+
+UNDEFINED SYMBOLS
+bsp_rtk_data_task
+bsp_rtk_get_info
+navigation_run_once
+zf_system_clock_init
+bsp_uart_init
+bsp_rtk_init
+speed_control_init
+navigation_init
+zf_pit_ms_init
+puts
+zf_delay_ms

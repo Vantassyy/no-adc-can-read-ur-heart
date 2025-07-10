@@ -1,0 +1,635 @@
+   1              		.cpu cortex-m7
+   2              		.arch armv7e-m
+   3              		.fpu fpv5-d16
+   4              		.eabi_attribute 28, 1
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 6
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.file	"bsp_uart.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.bss.g_debug_uart_rx_buffer,"aw",%nobits
+  19              		.align	2
+  22              	g_debug_uart_rx_buffer:
+  23 0000 00000000 		.space	256
+  23      00000000 
+  23      00000000 
+  23      00000000 
+  23      00000000 
+  24              		.section	.bss.g_rtk_uart_rx_buffer,"aw",%nobits
+  25              		.align	2
+  28              	g_rtk_uart_rx_buffer:
+  29 0000 00000000 		.space	1024
+  29      00000000 
+  29      00000000 
+  29      00000000 
+  29      00000000 
+  30              		.section	.data.g_uart_instances,"aw"
+  31              		.align	2
+  34              	g_uart_instances:
+  35 0000 02       		.byte	2
+  36 0001 000000   		.space	3
+  37 0004 8A700200 		.word	159882
+  38 0008 89700200 		.word	159881
+  39 000c 00000000 		.space	20
+  39      00000000 
+  39      00000000 
+  39      00000000 
+  39      00000000 
+  40 0020 00000000 		.word	g_debug_uart_rx_buffer
+  41 0024 0001     		.short	256
+  42 0026 00       		.byte	0
+  43 0027 00       		.space	1
+  44 0028 00       		.byte	0
+  45 0029 000000   		.space	3
+  46 002c A3700000 		.word	28835
+  47 0030 A2700000 		.word	28834
+  48 0034 00000000 		.space	20
+  48      00000000 
+  48      00000000 
+  48      00000000 
+  48      00000000 
+  49 0048 00000000 		.word	g_rtk_uart_rx_buffer
+  50 004c 0004     		.short	1024
+  51 004e 00       		.byte	0
+  52 004f 00       		.space	1
+  53              		.section	.text.universal_uart_handler,"ax",%progbits
+  54              		.align	1
+  55              		.p2align 4,,15
+  56              		.syntax unified
+  57              		.thumb
+  58              		.thumb_func
+  60              	universal_uart_handler:
+  61              	.LFB172:
+  62              		.file 1 "user_code/bsp_uart.c"
+   1:user_code/bsp_uart.c **** #include "bsp_uart.h"
+   2:user_code/bsp_uart.c **** 
+   3:user_code/bsp_uart.c **** // ================== 内部数据结构与变量 ==================
+   4:user_code/bsp_uart.c **** 
+   5:user_code/bsp_uart.c **** typedef struct
+   6:user_code/bsp_uart.c **** {
+   7:user_code/bsp_uart.c ****     zf_uart_index_enum  hw_uart_index;
+   8:user_code/bsp_uart.c ****     zf_uart_tx_pin_enum tx_pin;
+   9:user_code/bsp_uart.c ****     zf_uart_rx_pin_enum rx_pin;
+  10:user_code/bsp_uart.c ****     zf_fifo_obj_struct  rx_fifo;
+  11:user_code/bsp_uart.c ****     uint8_t             *rx_buffer;
+  12:user_code/bsp_uart.c ****     uint16_t            rx_buffer_size;
+  13:user_code/bsp_uart.c ****     bool                is_initialized;
+  14:user_code/bsp_uart.c **** } bsp_uart_instance_t;
+  15:user_code/bsp_uart.c **** 
+  16:user_code/bsp_uart.c **** static uint8_t g_debug_uart_rx_buffer[BSP_UART_DEBUG_RX_BUF_SIZE];
+  17:user_code/bsp_uart.c **** static uint8_t g_rtk_uart_rx_buffer[BSP_UART_RTK_RX_BUF_SIZE];
+  18:user_code/bsp_uart.c **** 
+  19:user_code/bsp_uart.c **** static bsp_uart_instance_t g_uart_instances[BSP_UART_NUM_MAX] =
+  20:user_code/bsp_uart.c **** {
+  21:user_code/bsp_uart.c ****     [BSP_UART_DEBUG] = {
+  22:user_code/bsp_uart.c ****         .hw_uart_index = UART_3,
+  23:user_code/bsp_uart.c ****         .tx_pin = UART3_TX_E10,
+  24:user_code/bsp_uart.c ****         .rx_pin = UART3_RX_E9,
+  25:user_code/bsp_uart.c ****         .rx_buffer = g_debug_uart_rx_buffer,
+  26:user_code/bsp_uart.c ****         .rx_buffer_size = BSP_UART_DEBUG_RX_BUF_SIZE,
+  27:user_code/bsp_uart.c ****         .is_initialized = false
+  28:user_code/bsp_uart.c ****     },
+  29:user_code/bsp_uart.c ****     [BSP_UART_RTK] = {
+  30:user_code/bsp_uart.c ****         .hw_uart_index = UART_1,
+  31:user_code/bsp_uart.c ****         .tx_pin = UART1_TX_F3,
+  32:user_code/bsp_uart.c ****         .rx_pin = UART1_RX_F2,
+  33:user_code/bsp_uart.c ****         .rx_buffer = g_rtk_uart_rx_buffer,
+  34:user_code/bsp_uart.c ****         .rx_buffer_size = BSP_UART_RTK_RX_BUF_SIZE,
+  35:user_code/bsp_uart.c ****         .is_initialized = false
+  36:user_code/bsp_uart.c ****     }
+  37:user_code/bsp_uart.c **** };
+  38:user_code/bsp_uart.c **** 
+  39:user_code/bsp_uart.c **** // ================== 内部中断处理函数 ==================
+  40:user_code/bsp_uart.c **** 
+  41:user_code/bsp_uart.c **** static void universal_uart_handler(uint32_t event, void* ptr)
+  42:user_code/bsp_uart.c **** {
+  63              		.loc 1 42 1
+  64              		.cfi_startproc
+  65              		@ args = 0, pretend = 0, frame = 16
+  66              		@ frame_needed = 0, uses_anonymous_args = 0
+  67 0000 00B5     		push	{lr}
+  68              		.cfi_def_cfa_offset 4
+  69              		.cfi_offset 14, -4
+  70 0002 85B0     		sub	sp, sp, #20
+  71              		.cfi_def_cfa_offset 24
+  72 0004 0190     		str	r0, [sp, #4]
+  73 0006 0091     		str	r1, [sp]
+  43:user_code/bsp_uart.c ****     bsp_uart_instance_t* instance = (bsp_uart_instance_t*)ptr;
+  74              		.loc 1 43 26
+  75 0008 009B     		ldr	r3, [sp]
+  76 000a 0393     		str	r3, [sp, #12]
+  44:user_code/bsp_uart.c **** 
+  45:user_code/bsp_uart.c ****     if (UART_INTERRUPT_STATE_RX & event)
+  77              		.loc 1 45 33
+  78 000c 019B     		ldr	r3, [sp, #4]
+  79 000e 03F00103 		and	r3, r3, #1
+  80              		.loc 1 45 8
+  81 0012 002B     		cmp	r3, #0
+  82 0014 12D0     		beq	.L3
+  83              	.LBB2:
+  46:user_code/bsp_uart.c ****     {
+  47:user_code/bsp_uart.c ****         uint8_t data_byte = 0;
+  84              		.loc 1 47 17
+  85 0016 0023     		movs	r3, #0
+  86 0018 8DF80B30 		strb	r3, [sp, #11]
+  48:user_code/bsp_uart.c ****         zf_uart_query_byte(instance->hw_uart_index, &data_byte);
+  87              		.loc 1 48 9
+  88 001c 039B     		ldr	r3, [sp, #12]
+  89 001e 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+  90 0020 0DF10B02 		add	r2, sp, #11
+  91 0024 1146     		mov	r1, r2
+  92 0026 1846     		mov	r0, r3
+  93 0028 FFF7FEFF 		bl	zf_uart_query_byte
+  49:user_code/bsp_uart.c ****         zf_fifo_write_element(&instance->rx_fifo, data_byte);
+  94              		.loc 1 49 9
+  95 002c 039B     		ldr	r3, [sp, #12]
+  96 002e 0C33     		adds	r3, r3, #12
+  97 0030 9DF80B20 		ldrb	r2, [sp, #11]	@ zero_extendqisi2
+  98 0034 1146     		mov	r1, r2
+  99 0036 1846     		mov	r0, r3
+ 100 0038 FFF7FEFF 		bl	zf_fifo_write_element
+ 101              	.L3:
+ 102              	.LBE2:
+  50:user_code/bsp_uart.c ****     }
+  51:user_code/bsp_uart.c **** }
+ 103              		.loc 1 51 1
+ 104 003c 00BF     		nop
+ 105 003e 05B0     		add	sp, sp, #20
+ 106              		.cfi_def_cfa_offset 4
+ 107              		@ sp needed
+ 108 0040 5DF804FB 		ldr	pc, [sp], #4
+ 109              		.cfi_endproc
+ 110              	.LFE172:
+ 112              		.section	.text.bsp_uart_init,"ax",%progbits
+ 113              		.align	1
+ 114              		.p2align 4,,15
+ 115              		.global	bsp_uart_init
+ 116              		.syntax unified
+ 117              		.thumb
+ 118              		.thumb_func
+ 120              	bsp_uart_init:
+ 121              	.LFB173:
+  52:user_code/bsp_uart.c **** 
+  53:user_code/bsp_uart.c **** // ================== API函数实现 ==================
+  54:user_code/bsp_uart.c **** 
+  55:user_code/bsp_uart.c **** void bsp_uart_init(bsp_uart_e uart_ch, uint32_t baudrate)
+  56:user_code/bsp_uart.c **** {
+ 122              		.loc 1 56 1
+ 123              		.cfi_startproc
+ 124              		@ args = 0, pretend = 0, frame = 16
+ 125              		@ frame_needed = 0, uses_anonymous_args = 0
+ 126 0000 00B5     		push	{lr}
+ 127              		.cfi_def_cfa_offset 4
+ 128              		.cfi_offset 14, -4
+ 129 0002 85B0     		sub	sp, sp, #20
+ 130              		.cfi_def_cfa_offset 24
+ 131 0004 0346     		mov	r3, r0
+ 132 0006 0091     		str	r1, [sp]
+ 133 0008 8DF80730 		strb	r3, [sp, #7]
+  57:user_code/bsp_uart.c ****     if (uart_ch >= BSP_UART_NUM_MAX) return;
+ 134              		.loc 1 57 8
+ 135 000c 9DF80730 		ldrb	r3, [sp, #7]	@ zero_extendqisi2
+ 136 0010 012B     		cmp	r3, #1
+ 137 0012 32D8     		bhi	.L8
+  58:user_code/bsp_uart.c **** 
+  59:user_code/bsp_uart.c ****     bsp_uart_instance_t* instance = &g_uart_instances[uart_ch];
+ 138              		.loc 1 59 54
+ 139 0014 9DF80720 		ldrb	r2, [sp, #7]	@ zero_extendqisi2
+ 140              		.loc 1 59 26
+ 141 0018 1346     		mov	r3, r2
+ 142 001a 9B00     		lsls	r3, r3, #2
+ 143 001c 1344     		add	r3, r3, r2
+ 144 001e DB00     		lsls	r3, r3, #3
+ 145 0020 194A     		ldr	r2, .L10
+ 146 0022 1344     		add	r3, r3, r2
+ 147 0024 0393     		str	r3, [sp, #12]
+  60:user_code/bsp_uart.c **** 
+  61:user_code/bsp_uart.c ****     if (instance->is_initialized) return;
+ 148              		.loc 1 61 17
+ 149 0026 039B     		ldr	r3, [sp, #12]
+ 150 0028 93F82630 		ldrb	r3, [r3, #38]	@ zero_extendqisi2
+ 151              		.loc 1 61 8
+ 152 002c 002B     		cmp	r3, #0
+ 153 002e 26D1     		bne	.L9
+  62:user_code/bsp_uart.c **** 
+  63:user_code/bsp_uart.c ****     zf_fifo_init(&instance->rx_fifo, FIFO_DATA_8BIT, instance->rx_buffer, instance->rx_buffer_size)
+ 154              		.loc 1 63 5
+ 155 0030 039B     		ldr	r3, [sp, #12]
+ 156 0032 03F10C00 		add	r0, r3, #12
+ 157              		.loc 1 63 62
+ 158 0036 039B     		ldr	r3, [sp, #12]
+ 159 0038 1A6A     		ldr	r2, [r3, #32]
+ 160              		.loc 1 63 83
+ 161 003a 039B     		ldr	r3, [sp, #12]
+ 162 003c 9B8C     		ldrh	r3, [r3, #36]
+ 163              		.loc 1 63 5
+ 164 003e 0121     		movs	r1, #1
+ 165 0040 FFF7FEFF 		bl	zf_fifo_init
+  64:user_code/bsp_uart.c ****     zf_uart_init(instance->hw_uart_index, baudrate, instance->tx_pin, instance->rx_pin);
+ 166              		.loc 1 64 5
+ 167 0044 039B     		ldr	r3, [sp, #12]
+ 168 0046 1878     		ldrb	r0, [r3]	@ zero_extendqisi2
+ 169 0048 039B     		ldr	r3, [sp, #12]
+ 170 004a 5A68     		ldr	r2, [r3, #4]
+ 171 004c 039B     		ldr	r3, [sp, #12]
+ 172 004e 9B68     		ldr	r3, [r3, #8]
+ 173 0050 0099     		ldr	r1, [sp]
+ 174 0052 FFF7FEFF 		bl	zf_uart_init
+  65:user_code/bsp_uart.c ****     zf_uart_set_interrupt_callback(instance->hw_uart_index, universal_uart_handler, (void*)instance
+ 175              		.loc 1 65 5
+ 176 0056 039B     		ldr	r3, [sp, #12]
+ 177 0058 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 178 005a 039A     		ldr	r2, [sp, #12]
+ 179 005c 0B49     		ldr	r1, .L10+4
+ 180 005e 1846     		mov	r0, r3
+ 181 0060 FFF7FEFF 		bl	zf_uart_set_interrupt_callback
+  66:user_code/bsp_uart.c ****     zf_uart_set_interrupt_config(instance->hw_uart_index, UART_INTERRUPT_CONFIG_RX_ENABLE);
+ 182              		.loc 1 66 5
+ 183 0064 039B     		ldr	r3, [sp, #12]
+ 184 0066 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 185 0068 0421     		movs	r1, #4
+ 186 006a 1846     		mov	r0, r3
+ 187 006c FFF7FEFF 		bl	zf_uart_set_interrupt_config
+  67:user_code/bsp_uart.c **** 
+  68:user_code/bsp_uart.c ****     // [已删除] 不再需要手动设置debug uart
+  69:user_code/bsp_uart.c **** 
+  70:user_code/bsp_uart.c ****     instance->is_initialized = true;
+ 188              		.loc 1 70 30
+ 189 0070 039B     		ldr	r3, [sp, #12]
+ 190 0072 0122     		movs	r2, #1
+ 191 0074 83F82620 		strb	r2, [r3, #38]
+ 192 0078 02E0     		b	.L4
+ 193              	.L8:
+  57:user_code/bsp_uart.c **** 
+ 194              		.loc 1 57 38
+ 195 007a 00BF     		nop
+ 196 007c 00E0     		b	.L4
+ 197              	.L9:
+  61:user_code/bsp_uart.c **** 
+ 198              		.loc 1 61 35
+ 199 007e 00BF     		nop
+ 200              	.L4:
+  71:user_code/bsp_uart.c **** }
+ 201              		.loc 1 71 1
+ 202 0080 05B0     		add	sp, sp, #20
+ 203              		.cfi_def_cfa_offset 4
+ 204              		@ sp needed
+ 205 0082 5DF804FB 		ldr	pc, [sp], #4
+ 206              	.L11:
+ 207 0086 00BF     		.align	2
+ 208              	.L10:
+ 209 0088 00000000 		.word	g_uart_instances
+ 210 008c 00000000 		.word	universal_uart_handler
+ 211              		.cfi_endproc
+ 212              	.LFE173:
+ 214              		.section	.text.bsp_uart_write_byte,"ax",%progbits
+ 215              		.align	1
+ 216              		.p2align 4,,15
+ 217              		.global	bsp_uart_write_byte
+ 218              		.syntax unified
+ 219              		.thumb
+ 220              		.thumb_func
+ 222              	bsp_uart_write_byte:
+ 223              	.LFB174:
+  72:user_code/bsp_uart.c **** 
+  73:user_code/bsp_uart.c **** void bsp_uart_write_byte(bsp_uart_e uart_ch, uint8_t data)
+  74:user_code/bsp_uart.c **** {
+ 224              		.loc 1 74 1
+ 225              		.cfi_startproc
+ 226              		@ args = 0, pretend = 0, frame = 8
+ 227              		@ frame_needed = 0, uses_anonymous_args = 0
+ 228 0000 00B5     		push	{lr}
+ 229              		.cfi_def_cfa_offset 4
+ 230              		.cfi_offset 14, -4
+ 231 0002 83B0     		sub	sp, sp, #12
+ 232              		.cfi_def_cfa_offset 16
+ 233 0004 0346     		mov	r3, r0
+ 234 0006 0A46     		mov	r2, r1
+ 235 0008 8DF80730 		strb	r3, [sp, #7]
+ 236 000c 1346     		mov	r3, r2
+ 237 000e 8DF80630 		strb	r3, [sp, #6]
+  75:user_code/bsp_uart.c ****     if (uart_ch >= BSP_UART_NUM_MAX) return;
+ 238              		.loc 1 75 8
+ 239 0012 9DF80730 		ldrb	r3, [sp, #7]	@ zero_extendqisi2
+ 240 0016 012B     		cmp	r3, #1
+ 241 0018 0FD8     		bhi	.L15
+  76:user_code/bsp_uart.c ****     zf_uart_write_byte(g_uart_instances[uart_ch].hw_uart_index, data);
+ 242              		.loc 1 76 5
+ 243 001a 9DF80720 		ldrb	r2, [sp, #7]	@ zero_extendqisi2
+ 244 001e 0949     		ldr	r1, .L16
+ 245 0020 1346     		mov	r3, r2
+ 246 0022 9B00     		lsls	r3, r3, #2
+ 247 0024 1344     		add	r3, r3, r2
+ 248 0026 DB00     		lsls	r3, r3, #3
+ 249 0028 0B44     		add	r3, r3, r1
+ 250 002a 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 251 002c 9DF80620 		ldrb	r2, [sp, #6]	@ zero_extendqisi2
+ 252 0030 1146     		mov	r1, r2
+ 253 0032 1846     		mov	r0, r3
+ 254 0034 FFF7FEFF 		bl	zf_uart_write_byte
+ 255 0038 00E0     		b	.L12
+ 256              	.L15:
+  75:user_code/bsp_uart.c ****     if (uart_ch >= BSP_UART_NUM_MAX) return;
+ 257              		.loc 1 75 38
+ 258 003a 00BF     		nop
+ 259              	.L12:
+  77:user_code/bsp_uart.c **** }
+ 260              		.loc 1 77 1
+ 261 003c 03B0     		add	sp, sp, #12
+ 262              		.cfi_def_cfa_offset 4
+ 263              		@ sp needed
+ 264 003e 5DF804FB 		ldr	pc, [sp], #4
+ 265              	.L17:
+ 266 0042 00BF     		.align	2
+ 267              	.L16:
+ 268 0044 00000000 		.word	g_uart_instances
+ 269              		.cfi_endproc
+ 270              	.LFE174:
+ 272              		.section	.text.bsp_uart_write_buffer,"ax",%progbits
+ 273              		.align	1
+ 274              		.p2align 4,,15
+ 275              		.global	bsp_uart_write_buffer
+ 276              		.syntax unified
+ 277              		.thumb
+ 278              		.thumb_func
+ 280              	bsp_uart_write_buffer:
+ 281              	.LFB175:
+  78:user_code/bsp_uart.c **** 
+  79:user_code/bsp_uart.c **** void bsp_uart_write_buffer(bsp_uart_e uart_ch, const uint8_t* buffer, uint32_t length)
+  80:user_code/bsp_uart.c **** {
+ 282              		.loc 1 80 1
+ 283              		.cfi_startproc
+ 284              		@ args = 0, pretend = 0, frame = 16
+ 285              		@ frame_needed = 0, uses_anonymous_args = 0
+ 286 0000 00B5     		push	{lr}
+ 287              		.cfi_def_cfa_offset 4
+ 288              		.cfi_offset 14, -4
+ 289 0002 85B0     		sub	sp, sp, #20
+ 290              		.cfi_def_cfa_offset 24
+ 291 0004 0346     		mov	r3, r0
+ 292 0006 0291     		str	r1, [sp, #8]
+ 293 0008 0192     		str	r2, [sp, #4]
+ 294 000a 8DF80F30 		strb	r3, [sp, #15]
+  81:user_code/bsp_uart.c ****     if (uart_ch >= BSP_UART_NUM_MAX) return;
+ 295              		.loc 1 81 8
+ 296 000e 9DF80F30 		ldrb	r3, [sp, #15]	@ zero_extendqisi2
+ 297 0012 012B     		cmp	r3, #1
+ 298 0014 0ED8     		bhi	.L21
+  82:user_code/bsp_uart.c ****     zf_uart_write_buffer(g_uart_instances[uart_ch].hw_uart_index, (uint8_t*)buffer, length);
+ 299              		.loc 1 82 5
+ 300 0016 9DF80F20 		ldrb	r2, [sp, #15]	@ zero_extendqisi2
+ 301 001a 0849     		ldr	r1, .L22
+ 302 001c 1346     		mov	r3, r2
+ 303 001e 9B00     		lsls	r3, r3, #2
+ 304 0020 1344     		add	r3, r3, r2
+ 305 0022 DB00     		lsls	r3, r3, #3
+ 306 0024 0B44     		add	r3, r3, r1
+ 307 0026 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 308 0028 019A     		ldr	r2, [sp, #4]
+ 309 002a 0299     		ldr	r1, [sp, #8]
+ 310 002c 1846     		mov	r0, r3
+ 311 002e FFF7FEFF 		bl	zf_uart_write_buffer
+ 312 0032 00E0     		b	.L18
+ 313              	.L21:
+  81:user_code/bsp_uart.c ****     if (uart_ch >= BSP_UART_NUM_MAX) return;
+ 314              		.loc 1 81 38
+ 315 0034 00BF     		nop
+ 316              	.L18:
+  83:user_code/bsp_uart.c **** }
+ 317              		.loc 1 83 1
+ 318 0036 05B0     		add	sp, sp, #20
+ 319              		.cfi_def_cfa_offset 4
+ 320              		@ sp needed
+ 321 0038 5DF804FB 		ldr	pc, [sp], #4
+ 322              	.L23:
+ 323              		.align	2
+ 324              	.L22:
+ 325 003c 00000000 		.word	g_uart_instances
+ 326              		.cfi_endproc
+ 327              	.LFE175:
+ 329              		.section	.text.bsp_uart_read_byte,"ax",%progbits
+ 330              		.align	1
+ 331              		.p2align 4,,15
+ 332              		.global	bsp_uart_read_byte
+ 333              		.syntax unified
+ 334              		.thumb
+ 335              		.thumb_func
+ 337              	bsp_uart_read_byte:
+ 338              	.LFB176:
+  84:user_code/bsp_uart.c **** 
+  85:user_code/bsp_uart.c **** bool bsp_uart_read_byte(bsp_uart_e uart_ch, uint8_t* data)
+  86:user_code/bsp_uart.c **** {
+ 339              		.loc 1 86 1
+ 340              		.cfi_startproc
+ 341              		@ args = 0, pretend = 0, frame = 8
+ 342              		@ frame_needed = 0, uses_anonymous_args = 0
+ 343 0000 00B5     		push	{lr}
+ 344              		.cfi_def_cfa_offset 4
+ 345              		.cfi_offset 14, -4
+ 346 0002 83B0     		sub	sp, sp, #12
+ 347              		.cfi_def_cfa_offset 16
+ 348 0004 0346     		mov	r3, r0
+ 349 0006 0091     		str	r1, [sp]
+ 350 0008 8DF80730 		strb	r3, [sp, #7]
+  87:user_code/bsp_uart.c ****     if (uart_ch >= BSP_UART_NUM_MAX || data == NULL) return false;
+ 351              		.loc 1 87 8
+ 352 000c 9DF80730 		ldrb	r3, [sp, #7]	@ zero_extendqisi2
+ 353 0010 012B     		cmp	r3, #1
+ 354 0012 02D8     		bhi	.L25
+ 355              		.loc 1 87 37 discriminator 2
+ 356 0014 009B     		ldr	r3, [sp]
+ 357 0016 002B     		cmp	r3, #0
+ 358 0018 01D1     		bne	.L26
+ 359              	.L25:
+ 360              		.loc 1 87 61 discriminator 3
+ 361 001a 0023     		movs	r3, #0
+ 362 001c 14E0     		b	.L27
+ 363              	.L26:
+  88:user_code/bsp_uart.c **** 
+  89:user_code/bsp_uart.c ****     // [已修正] 添加了第三个参数 FIFO_READ_WITH_CLEAN
+  90:user_code/bsp_uart.c ****     if (zf_fifo_read_element(&g_uart_instances[uart_ch].rx_fifo, data, FIFO_READ_WITH_CLEAN))
+ 364              		.loc 1 90 56
+ 365 001e 9DF80720 		ldrb	r2, [sp, #7]	@ zero_extendqisi2
+ 366              		.loc 1 90 9
+ 367 0022 1346     		mov	r3, r2
+ 368 0024 9B00     		lsls	r3, r3, #2
+ 369 0026 1344     		add	r3, r3, r2
+ 370 0028 DB00     		lsls	r3, r3, #3
+ 371 002a 0833     		adds	r3, r3, #8
+ 372 002c 084A     		ldr	r2, .L29
+ 373 002e 1344     		add	r3, r3, r2
+ 374 0030 0433     		adds	r3, r3, #4
+ 375 0032 0122     		movs	r2, #1
+ 376 0034 0099     		ldr	r1, [sp]
+ 377 0036 1846     		mov	r0, r3
+ 378 0038 FFF7FEFF 		bl	zf_fifo_read_element
+ 379 003c 0346     		mov	r3, r0
+ 380              		.loc 1 90 8
+ 381 003e 002B     		cmp	r3, #0
+ 382 0040 01D0     		beq	.L28
+  91:user_code/bsp_uart.c ****     {
+  92:user_code/bsp_uart.c ****         return true;
+ 383              		.loc 1 92 16
+ 384 0042 0123     		movs	r3, #1
+ 385 0044 00E0     		b	.L27
+ 386              	.L28:
+  93:user_code/bsp_uart.c ****     }
+  94:user_code/bsp_uart.c **** 
+  95:user_code/bsp_uart.c ****     return false;
+ 387              		.loc 1 95 12
+ 388 0046 0023     		movs	r3, #0
+ 389              	.L27:
+  96:user_code/bsp_uart.c **** }
+ 390              		.loc 1 96 1
+ 391 0048 1846     		mov	r0, r3
+ 392 004a 03B0     		add	sp, sp, #12
+ 393              		.cfi_def_cfa_offset 4
+ 394              		@ sp needed
+ 395 004c 5DF804FB 		ldr	pc, [sp], #4
+ 396              	.L30:
+ 397              		.align	2
+ 398              	.L29:
+ 399 0050 00000000 		.word	g_uart_instances
+ 400              		.cfi_endproc
+ 401              	.LFE176:
+ 403              		.text
+ 404              	.Letext0:
+ 405              		.file 2 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 406              		.file 3 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\arm-n
+ 407              		.file 4 "libraries/zf_common/zf_common_typedef.h"
+ 408              		.file 5 "libraries/zf_driver/zf_driver_gpio.h"
+ 409              		.file 6 "libraries/zf_driver/zf_driver_uart.h"
+ 410              		.file 7 "libraries/zf_common/zf_common_fifo.h"
+ 411              		.file 8 "user_code/bsp_uart.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 bsp_uart.c
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:19     .bss.g_debug_uart_rx_buffer:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:22     .bss.g_debug_uart_rx_buffer:00000000 g_debug_uart_rx_buffer
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:25     .bss.g_rtk_uart_rx_buffer:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:28     .bss.g_rtk_uart_rx_buffer:00000000 g_rtk_uart_rx_buffer
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:31     .data.g_uart_instances:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:34     .data.g_uart_instances:00000000 g_uart_instances
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:54     .text.universal_uart_handler:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:60     .text.universal_uart_handler:00000000 universal_uart_handler
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:113    .text.bsp_uart_init:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:120    .text.bsp_uart_init:00000000 bsp_uart_init
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:209    .text.bsp_uart_init:00000088 $d
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:215    .text.bsp_uart_write_byte:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:222    .text.bsp_uart_write_byte:00000000 bsp_uart_write_byte
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:268    .text.bsp_uart_write_byte:00000044 $d
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:273    .text.bsp_uart_write_buffer:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:280    .text.bsp_uart_write_buffer:00000000 bsp_uart_write_buffer
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:325    .text.bsp_uart_write_buffer:0000003c $d
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:330    .text.bsp_uart_read_byte:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:337    .text.bsp_uart_read_byte:00000000 bsp_uart_read_byte
+C:\Users\20766\AppData\Local\Temp\ccZ9iABc.s:399    .text.bsp_uart_read_byte:00000050 $d
+                           .group:00000000 wm4.0.1ea29c7543256e0887205fa7f8c557c8
+                           .group:00000000 wm4._newlib_version.h.4.bfdf54b0af045d4a71376ae00f63a22c
+                           .group:00000000 wm4.newlib.h.18.1c9fedb6b3cd797cff253cc0fd593ef2
+                           .group:00000000 wm4.ieeefp.h.77.2bc94c1d1ed8b02df437510a04ac1e45
+                           .group:00000000 wm4.features.h.22.026edb2397769f4ae13f35900dbdb560
+                           .group:00000000 wm4.config.h.224.c701144a7b0518c6ee9b9b5465b79f81
+                           .group:00000000 wm4._ansi.h.31.de524f58584151836e90d8620a16f8e8
+                           .group:00000000 wm4.stdio.h.31.7c0e28c411445f3f9c5b11accf882760
+                           .group:00000000 wm4._default_types.h.6.959254cf5f09734ea7516c89e8bb21bd
+                           .group:00000000 wm4.stddef.h.181.c3f52a3b0f4c288bddb5dda1562858e2
+                           .group:00000000 wm4.cdefs.h.49.a54b2d5c07711bc7320a3fea9f12cb56
+                           .group:00000000 wm4.stddef.h.39.c161261b198ee3a963897077fd6fa59f
+                           .group:00000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:00000000 wm4._types.h.20.dd0d04dca3800a0d2a6129b87f3adbb2
+                           .group:00000000 wm4.stddef.h.155.3588ebfdd1e8c7ede80509bb9c3b8009
+                           .group:00000000 wm4._types.h.127.34941de1b2539d59d5cac00e0dd27a45
+                           .group:00000000 wm4.reent.h.17.e292bf8b0bec6c96e131a54347145a30
+                           .group:00000000 wm4.lock.h.2.1461d1fff82dffe8bfddc23307f6484f
+                           .group:00000000 wm4.reent.h.77.dcd6129ff07fe81bd5636db29abe53b2
+                           .group:00000000 wm4.types.h.40.8b6acba56cefbb11746718204edc8f5e
+                           .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
+                           .group:00000000 wm4._endian.h.31.65a10590763c3dde1ac4a7f66d7d4891
+                           .group:00000000 wm4.endian.h.9.49f3a4695c1b61e8a0808de3c4a106cb
+                           .group:00000000 wm4._timeval.h.32.bec3221fa7a9bb0bdde696c9c57e47d2
+                           .group:00000000 wm4.timespec.h.41.d855182eb0e690443ab8651bcedca6e1
+                           .group:00000000 wm4.select.h.19.40cd3f2bfc456b193b790c2754690ebf
+                           .group:00000000 wm4.types.h.51.5571ec98f267d17d3c670b7a3ba33afa
+                           .group:00000000 wm4.sched.h.22.c60982713a5c428609783c78f9c78d95
+                           .group:00000000 wm4._pthreadtypes.h.36.fcee9961c35163dde6267ef772ad1972
+                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:00000000 wm4.stdio.h.81.932d0c162786b883f622b8d05c120c78
+                           .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
+                           .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.stdbool.h.29.07dce69c3b78884144b7f7bd19483461
+                           .group:00000000 wm4.stdarg.h.31.3fa7b8f6daaa31edd1696c08c77f2a73
+                           .group:00000000 wm4.string.h.8.c4b8571ce60dff2817f43fec8b86aecd
+                           .group:00000000 wm4.stddef.h.155.ba788add86a0e365f264484f110c3c29
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.56.f4862cfbf4363a1db01842d5bdf72c18
+                           .group:00000000 wm4.zf_common_typedef.h.47.8c368673885c9d07221c267e15ab1069
+                           .group:00000000 wm4.sr5e1xx.h.22.e5c808533cc52ed19fb0830cd7d98924
+                           .group:00000000 wm4.cmsis_version.h.32.0f826810625204eca22a19868bdc7586
+                           .group:00000000 wm4.core_cm7.h.66.8ab2de36917d6fcae18019067fda13e0
+                           .group:00000000 wm4.cmsis_gcc.h.26.498d0ad17a45fc9ef20fdc01caf02259
+                           .group:00000000 wm4.core_cm7.h.174.43edb295ecdaadad738f48ba6011ffad
+                           .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
+                           .group:00000000 wm4.cachel1_armv7.h.32.abd77761a989e008b0c60891114a33c7
+                           .group:00000000 wm4.SR5E1_ADC.h.14.21608e6aff125ba995dd767d6d8dc311
+                           .group:00000000 wm4.SR5E1_CEM.h.14.01fe5742c8f1ae35b1f3af05932f702e
+                           .group:00000000 wm4.SR5E1_CMU.h.14.2617b38b159abe38028862394531e06d
+                           .group:00000000 wm4.SR5E1_COMP.h.14.4b6fdfe4f5f7fd9bedf3a99b98bdf4cd
+                           .group:00000000 wm4.SR5E1_CORDIC.h.14.354fbf7c9eaf6963d38eaa25cf28ffe8
+                           .group:00000000 wm4.SR5E1_CRC.h.14.c64d0f7767671ddb92e9ead0a1162100
+                           .group:00000000 wm4.SR5E1_DAC.h.14.8c26a0ff04b0cfeb55306cc3f22187b8
+                           .group:00000000 wm4.SR5E1_DBGMCU.h.14.427df893d53a8044654f017ba01c25ed
+                           .group:00000000 wm4.SR5E1_DMA.h.14.a7f9a92f844b40a86965798c2e64240b
+                           .group:00000000 wm4.SR5E1_DMAMUX.h.14.471b3b4dfd4d41515f1df49493698866
+                           .group:00000000 wm4.SR5E1_EXTI.h.14.a325ea3fe89cd84894660551c33241ea
+                           .group:00000000 wm4.SR5E1_FCCU.h.14.0ebf0f0f36e079d28613ad2c80e17e23
+                           .group:00000000 wm4.SR5E1_FDCAN.h.14.ac57101fad5dbc798bfb93f34c899de7
+                           .group:00000000 wm4.SR5E1_FLASH_REG_ITF.h.14.d23d1d44923f9b20b8c8fdb51d66aefd
+                           .group:00000000 wm4.SR5E1_GPIO.h.14.1c84071e130d7c64b62470ab0e18a1f1
+                           .group:00000000 wm4.SR5E1_HRTIM.h.24.03932387d2522e6bd5c772a4edaf2f5d
+                           .group:00000000 wm4.SR5E1_HSEM.h.14.cbe70eee519f01b16452c3f8c99d8df1
+                           .group:00000000 wm4.SR5E1_I2C.h.14.350ba3e0f4fd57828457efa80135c36c
+                           .group:00000000 wm4.SR5E1_IMA.h.14.62b7088985ab2b7ce9b030a02daa1f7d
+                           .group:00000000 wm4.SR5E1_IWDG.h.14.20b7c5f05cf7ae94464c360d7af3660d
+                           .group:00000000 wm4.SR5E1_MEMU.h.14.04bad7ae4c52ce334a4fc900aad2ae5b
+                           .group:00000000 wm4.SR5E1_NVM_CTRL.h.14.5f442617f0628d4f16258f211c614ef9
+                           .group:00000000 wm4.SR5E1_PLLDIG.h.14.bd87a8e6917eee17dae2f312c8e5fa53
+                           .group:00000000 wm4.SR5E1_PMC_DIG.h.14.54173b566c6656344766ec4ef46c9281
+                           .group:00000000 wm4.SR5E1_RCC.h.14.56734803c71534de286e793a53649740
+                           .group:00000000 wm4.SR5E1_RTC.h.14.47037cbc7d8175dbf2be1dc0bb955e3f
+                           .group:00000000 wm4.SR5E1_SD_ADC.h.14.552b97d0b8f3c1fd4df6d8964b2f1a80
+                           .group:00000000 wm4.SR5E1_SMPU.h.14.8ce5bb6d5d7c579cd725f492f46e9085
+                           .group:00000000 wm4.SR5E1_SPI.h.14.42d52112e540f85ade4d9135f8b87d72
+                           .group:00000000 wm4.SR5E1_SSCM.h.14.8e6a2ad0ce5fca422fc3d69939b6125b
+                           .group:00000000 wm4.SR5E1_SYSCFG.h.14.02b969490118ce4069914b5e94f7ca65
+                           .group:00000000 wm4.SR5E1_TDM.h.14.a40ed7928cad243a57fd233fccf01ad2
+                           .group:00000000 wm4.SR5E1_TIM.h.14.05b8efc5395873619642d61a4b0b5a54
+                           .group:00000000 wm4.SR5E1_UART.h.14.eec3ab82b02b3bdb3de500483675b83f
+                           .group:00000000 wm4.SR5E1_WWDG.h.14.59b45efc70e442cc6ef03702aad4ad88
+                           .group:00000000 wm4.typedefs.h.36.07fe3956b4e751037cfee70edcd0b397
+                           .group:00000000 wm4.irq_numbers.h.38.6294b95aed1bf7b3a2cda0eed8ce8f57
+                           .group:00000000 wm4.regs.h.23.2ac145b4f57126d16daed5fbd86d99c6
+                           .group:00000000 wm4.gpio.h.38.4f37c988f6412e2fcf390b4a4a9849b1
+                           .group:00000000 wm4.zf_driver_gpio.h.65.5a4d2084c62fed7c22fdca02e748c198
+                           .group:00000000 wm4.zf_driver_uart.h.68.14c9cf719d9cd0f517e5a4bcb943af75
+                           .group:00000000 wm4.zf_common_fifo.h.114.cace62233bb13c2a4f57ef2746f514d9
+                           .group:00000000 wm4.bsp_uart.h.31.c709869491969cfdef8a75d6bfc161b7
+
+UNDEFINED SYMBOLS
+zf_uart_query_byte
+zf_fifo_write_element
+zf_fifo_init
+zf_uart_init
+zf_uart_set_interrupt_callback
+zf_uart_set_interrupt_config
+zf_uart_write_byte
+zf_uart_write_buffer
+zf_fifo_read_element

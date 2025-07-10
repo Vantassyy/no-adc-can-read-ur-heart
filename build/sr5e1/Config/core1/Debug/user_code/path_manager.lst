@@ -1,0 +1,1723 @@
+   1              		.cpu cortex-m7
+   2              		.arch armv7e-m
+   3              		.fpu fpv5-d16
+   4              		.eabi_attribute 28, 1
+   5              		.eabi_attribute 20, 1
+   6              		.eabi_attribute 21, 1
+   7              		.eabi_attribute 23, 3
+   8              		.eabi_attribute 24, 1
+   9              		.eabi_attribute 25, 1
+  10              		.eabi_attribute 26, 1
+  11              		.eabi_attribute 30, 6
+  12              		.eabi_attribute 34, 1
+  13              		.eabi_attribute 18, 4
+  14              		.file	"path_manager.c"
+  15              		.text
+  16              	.Ltext0:
+  17              		.cfi_sections	.debug_frame
+  18              		.section	.rodata.g_path_gps,"a"
+  19              		.align	3
+  22              	g_path_gps:
+  23 0000 00000000 		.space	24
+  23      00000000 
+  23      00000000 
+  23      00000000 
+  23      00000000 
+  24 0018 348FB234 		.word	884117300
+  25 001c A6C43E40 		.word	1077855398
+  26 0020 B492356E 		.word	1849004724
+  27 0024 9AFE5940 		.word	1079639706
+  28 0028 00000000 		.space	32
+  28      00000000 
+  28      00000000 
+  28      00000000 
+  28      00000000 
+  29 0048 00000000 		.space	24
+  29      00000000 
+  29      00000000 
+  29      00000000 
+  29      00000000 
+  30 0060 520ABABD 		.word	-1111881134
+  31 0064 A4C43E40 		.word	1077855396
+  32 0068 BD17A1D0 		.word	-794748995
+  33 006c 99FE5940 		.word	1079639705
+  34 0070 00000000 		.space	32
+  34      00000000 
+  34      00000000 
+  34      00000000 
+  34      00000000 
+  35 0090 00000000 		.space	24
+  35      00000000 
+  35      00000000 
+  35      00000000 
+  35      00000000 
+  36 00a8 B81D1A16 		.word	370810296
+  37 00ac A3C43E40 		.word	1077855395
+  38 00b0 057A5525 		.word	626358789
+  39 00b4 99FE5940 		.word	1079639705
+  40 00b8 00000000 		.space	32
+  40      00000000 
+  40      00000000 
+  40      00000000 
+  40      00000000 
+  41 00d8 00000000 		.space	24
+  41      00000000 
+  41      00000000 
+  41      00000000 
+  41      00000000 
+  42 00f0 5B7D7555 		.word	1433763163
+  43 00f4 A0C43E40 		.word	1077855392
+  44 00f8 B1F270A7 		.word	-1485770063
+  45 00fc 99FE5940 		.word	1079639705
+  46 0100 00000000 		.space	32
+  46      00000000 
+  46      00000000 
+  46      00000000 
+  46      00000000 
+  47 0120 00000000 		.space	24
+  47      00000000 
+  47      00000000 
+  47      00000000 
+  47      00000000 
+  48 0138 EFDAEF9A 		.word	-1695556881
+  49 013c A1C43E40 		.word	1077855393
+  50 0140 5B4AD03E 		.word	1053837915
+  51 0144 9AFE5940 		.word	1079639706
+  52 0148 00000000 		.space	32
+  52      00000000 
+  52      00000000 
+  52      00000000 
+  52      00000000 
+  53 0168 00000000 		.space	24
+  53      00000000 
+  53      00000000 
+  53      00000000 
+  53      00000000 
+  54 0180 B24ECF9A 		.word	-1697689934
+  55 0184 A3C43E40 		.word	1077855395
+  56 0188 94D9C5D9 		.word	-641345132
+  57 018c 99FE5940 		.word	1079639705
+  58 0190 00000000 		.space	32
+  58      00000000 
+  58      00000000 
+  58      00000000 
+  58      00000000 
+  59 01b0 00000000 		.space	24
+  59      00000000 
+  59      00000000 
+  59      00000000 
+  59      00000000 
+  60 01c8 06BB61DB 		.word	-614352122
+  61 01cc A2C43E40 		.word	1077855394
+  62 01d0 BDFC4E93 		.word	-1823540035
+  63 01d4 99FE5940 		.word	1079639705
+  64 01d8 00000000 		.space	32
+  64      00000000 
+  64      00000000 
+  64      00000000 
+  64      00000000 
+  65 01f8 00000000 		.space	24
+  65      00000000 
+  65      00000000 
+  65      00000000 
+  65      00000000 
+  66 0210 9B6282D8 		.word	-662543717
+  67 0214 A1C43E40 		.word	1077855393
+  68 0218 4CE548C2 		.word	-1035410100
+  69 021c 99FE5940 		.word	1079639705
+  70 0220 00000000 		.space	32
+  70      00000000 
+  70      00000000 
+  70      00000000 
+  70      00000000 
+  71 0240 00000000 		.space	24
+  71      00000000 
+  71      00000000 
+  71      00000000 
+  71      00000000 
+  72 0258 C4BD09F0 		.word	-267797052
+  73 025c A3C43E40 		.word	1077855395
+  74 0260 96E425A4 		.word	-1541020522
+  75 0264 9AFE5940 		.word	1079639706
+  76 0268 00000000 		.space	32
+  76      00000000 
+  76      00000000 
+  76      00000000 
+  76      00000000 
+  77 0288 00000000 		.space	24
+  77      00000000 
+  77      00000000 
+  77      00000000 
+  77      00000000 
+  78 02a0 7D337BEA 		.word	-361024643
+  79 02a4 A2C43E40 		.word	1077855394
+  80 02a8 E0920CCE 		.word	-838036768
+  81 02ac 9AFE5940 		.word	1079639706
+  82 02b0 00000000 		.space	32
+  82      00000000 
+  82      00000000 
+  82      00000000 
+  82      00000000 
+  83 02d0 00000000 		.space	24
+  83      00000000 
+  83      00000000 
+  83      00000000 
+  83      00000000 
+  84 02e8 E8BB5B59 		.word	1499184104
+  85 02ec A2C43E40 		.word	1077855394
+  86 02f0 8A952C82 		.word	-2111007350
+  87 02f4 9AFE5940 		.word	1079639706
+  88 02f8 00000000 		.space	32
+  88      00000000 
+  88      00000000 
+  88      00000000 
+  88      00000000 
+  89 0318 00000000 		.space	24
+  89      00000000 
+  89      00000000 
+  89      00000000 
+  89      00000000 
+  90 0330 7CD11E2F 		.word	790548860
+  91 0334 A4C43E40 		.word	1077855396
+  92 0338 841D1032 		.word	839916932
+  93 033c 9AFE5940 		.word	1079639706
+  94 0340 00000000 		.space	32
+  94      00000000 
+  94      00000000 
+  94      00000000 
+  94      00000000 
+  95 0360 00000000 		.space	24
+  95      00000000 
+  95      00000000 
+  95      00000000 
+  95      00000000 
+  96 0378 0BFC975A 		.word	1519909899
+  97 037c A5C43E40 		.word	1077855397
+  98 0380 E60297C7 		.word	-946404634
+  99 0384 9AFE5940 		.word	1079639706
+ 100 0388 00000000 		.space	32
+ 100      00000000 
+ 100      00000000 
+ 100      00000000 
+ 100      00000000 
+ 101 03a8 00000000 		.space	24
+ 101      00000000 
+ 101      00000000 
+ 101      00000000 
+ 101      00000000 
+ 102 03c0 A69883A0 		.word	-1601988442
+ 103 03c4 A3C43E40 		.word	1077855395
+ 104 03c8 1F78E716 		.word	384268319
+ 105 03cc 9BFE5940 		.word	1079639707
+ 106 03d0 00000000 		.space	32
+ 106      00000000 
+ 106      00000000 
+ 106      00000000 
+ 106      00000000 
+ 107 03f0 00000000 		.space	24
+ 107      00000000 
+ 107      00000000 
+ 107      00000000 
+ 107      00000000 
+ 108 0408 A04BDD3A 		.word	987581344
+ 109 040c A4C43E40 		.word	1077855396
+ 110 0410 0122B369 		.word	1773347329
+ 111 0414 9BFE5940 		.word	1079639707
+ 112 0418 00000000 		.space	32
+ 112      00000000 
+ 112      00000000 
+ 112      00000000 
+ 112      00000000 
+ 113 0438 00000000 		.space	24
+ 113      00000000 
+ 113      00000000 
+ 113      00000000 
+ 113      00000000 
+ 114 0450 87A17A10 		.word	276472199
+ 115 0454 A7C43E40 		.word	1077855399
+ 116 0458 81F56EE2 		.word	-496044671
+ 117 045c 9AFE5940 		.word	1079639706
+ 118 0460 00000000 		.space	32
+ 118      00000000 
+ 118      00000000 
+ 118      00000000 
+ 118      00000000 
+ 119 0480 00000000 		.space	24
+ 119      00000000 
+ 119      00000000 
+ 119      00000000 
+ 119      00000000 
+ 120 0498 348FB234 		.word	884117300
+ 121 049c A6C43E40 		.word	1077855398
+ 122 04a0 B492356E 		.word	1849004724
+ 123 04a4 9AFE5940 		.word	1079639706
+ 124 04a8 00000000 		.space	32
+ 124      00000000 
+ 124      00000000 
+ 124      00000000 
+ 124      00000000 
+ 125              		.section	.bss.g_path_local,"aw",%nobits
+ 126              		.align	3
+ 129              	g_path_local:
+ 130 0000 00000000 		.space	272
+ 130      00000000 
+ 130      00000000 
+ 130      00000000 
+ 130      00000000 
+ 131              		.section	.bss.g_origin_gps,"aw",%nobits
+ 132              		.align	3
+ 135              	g_origin_gps:
+ 136 0000 00000000 		.space	72
+ 136      00000000 
+ 136      00000000 
+ 136      00000000 
+ 136      00000000 
+ 137              		.section	.bss.g_is_initialized,"aw",%nobits
+ 140              	g_is_initialized:
+ 141 0000 00       		.space	1
+ 142              		.section	.data.g_target_waypoint_index,"aw"
+ 143              		.align	2
+ 146              	g_target_waypoint_index:
+ 147 0000 01000000 		.word	1
+ 148              		.section	.bss.g_mission_completed,"aw",%nobits
+ 151              	g_mission_completed:
+ 152 0000 00       		.space	1
+ 153              		.section	.text.get_two_points_distance,"ax",%progbits
+ 154              		.align	1
+ 155              		.p2align 4,,15
+ 156              		.global	get_two_points_distance
+ 157              		.syntax unified
+ 158              		.thumb
+ 159              		.thumb_func
+ 161              	get_two_points_distance:
+ 162              	.LFB482:
+ 163              		.file 1 "user_code/path_manager.c"
+   1:user_code/path_manager.c **** #include "path_manager.h"
+   2:user_code/path_manager.c **** #include <math.h>
+   3:user_code/path_manager.c **** #include <string.h> // 用于 memset
+   4:user_code/path_manager.c **** #include <stdio.h>  // 用于 printf
+   5:user_code/path_manager.c **** 
+   6:user_code/path_manager.c **** // ================== 内部宏定义与配置 ==================
+   7:user_code/path_manager.c **** #define WAYPOINT_REACHED_THRESHOLD_M  (0.5) // [AI-COMMENT] 建议使用一个稍大的阈值增加
+   8:user_code/path_manager.c **** 
+   9:user_code/path_manager.c **** // ================== 路径点数据 ==================
+  10:user_code/path_manager.c **** // ================== 路径点数据 ==================
+  11:user_code/path_manager.c **** // [用户自定义路径 - 共 16 个点]
+  12:user_code/path_manager.c **** static const gnss_info_struct g_path_gps[] = {
+  13:user_code/path_manager.c ****     { .latitude = 30.76816110, .longitude = 103.97817569 }, // 点 1 (起点)
+  14:user_code/path_manager.c ****     { .latitude = 30.76813875,        .longitude = 103.97813812 },        // 点 2
+  15:user_code/path_manager.c ****     { .latitude = 30.76811350, .longitude = 103.97809728 }, // 点 3
+  16:user_code/path_manager.c ****     { .latitude = 30.76807150,        .longitude = 103.97812830},        // 点 4
+  17:user_code/path_manager.c ****     { .latitude = 30.76809090, .longitude = 103.97816439 }, // 点 5
+  18:user_code/path_manager.c ****     { .latitude = 30.76812141, .longitude = 103.97814030 }, // 点 6
+  19:user_code/path_manager.c ****     { .latitude = 30.76811000, .longitude = 103.97812350 }, // 点 7
+  20:user_code/path_manager.c ****     { .latitude = 30.76809457,         .longitude = 103.97813470 }, // 点 8
+  21:user_code/path_manager.c ****     { .latitude = 30.76812649, .longitude = 103.97818855 }, // 点 9
+  22:user_code/path_manager.c ****     { .latitude = 30.76811090, .longitude = 103.97819854 }, // 点 10
+  23:user_code/path_manager.c ****     { .latitude = 30.76810225, .longitude = 103.97818045 }, // 点 11
+  24:user_code/path_manager.c ****     { .latitude = 30.76813025, .longitude = 103.97816135 }, // 点 12
+  25:user_code/path_manager.c ****     { .latitude = 30.76814810, .longitude = 103.97819700 }, // 点 13
+  26:user_code/path_manager.c ****     { .latitude = 30.76812175, .longitude = 103.97821591 }, // 点 14
+  27:user_code/path_manager.c ****     { .latitude = 30.76813095, .longitude = 103.97823565 }, // 点 15
+  28:user_code/path_manager.c ****     { .latitude = 30.76817420,        .longitude = 103.97820340 }, // 点 16 (终点)
+  29:user_code/path_manager.c ****     { .latitude = 30.76816110, .longitude = 103.97817569 },
+  30:user_code/path_manager.c **** };
+  31:user_code/path_manager.c **** #define TOTAL_WAYPOINTS (sizeof(g_path_gps) / sizeof(g_path_gps[0]))
+  32:user_code/path_manager.c **** 
+  33:user_code/path_manager.c **** // ================== 内部变量 ==================
+  34:user_code/path_manager.c **** static Point_t g_path_local[TOTAL_WAYPOINTS];
+  35:user_code/path_manager.c **** static gnss_info_struct g_origin_gps;
+  36:user_code/path_manager.c **** static bool g_is_initialized = false;
+  37:user_code/path_manager.c **** static volatile int g_target_waypoint_index = 1;
+  38:user_code/path_manager.c **** 
+  39:user_code/path_manager.c **** // [AI-MOD] 新增全局状态变量，用于标记整个导航任务是否完成
+  40:user_code/path_manager.c **** static volatile bool g_mission_completed = false;
+  41:user_code/path_manager.c **** 
+  42:user_code/path_manager.c **** // ================== 依赖的数学函数 ==================
+  43:user_code/path_manager.c **** #ifndef ANGLE_TO_RAD
+  44:user_code/path_manager.c **** #define ANGLE_TO_RAD(angle) ((angle) * 3.14159265358979323846 / 180.0)
+  45:user_code/path_manager.c **** #endif
+  46:user_code/path_manager.c **** #ifndef RAD_TO_ANGLE
+  47:user_code/path_manager.c **** #define RAD_TO_ANGLE(rad)   ((rad) * 180.0 / 3.14159265358979323846)
+  48:user_code/path_manager.c **** #endif
+  49:user_code/path_manager.c **** double get_two_points_distance (double latitude1, double longitude1, double latitude2, double longi
+  50:user_code/path_manager.c **** {
+ 164              		.loc 1 50 1
+ 165              		.cfi_startproc
+ 166              		@ args = 0, pretend = 0, frame = 80
+ 167              		@ frame_needed = 0, uses_anonymous_args = 0
+ 168 0000 00B5     		push	{lr}
+ 169              		.cfi_def_cfa_offset 4
+ 170              		.cfi_offset 14, -4
+ 171 0002 2DED048B 		vpush.64	{d8, d9}
+ 172              		.cfi_def_cfa_offset 20
+ 173              		.cfi_offset 80, -20
+ 174              		.cfi_offset 81, -16
+ 175              		.cfi_offset 82, -12
+ 176              		.cfi_offset 83, -8
+ 177 0006 95B0     		sub	sp, sp, #84
+ 178              		.cfi_def_cfa_offset 104
+ 179 0008 8DED060B 		vstr.64	d0, [sp, #24]
+ 180 000c 8DED041B 		vstr.64	d1, [sp, #16]
+ 181 0010 8DED022B 		vstr.64	d2, [sp, #8]
+ 182 0014 8DED003B 		vstr.64	d3, [sp]
+  51:user_code/path_manager.c ****     const double EARTH_RADIUS = 6378137;
+ 183              		.loc 1 51 18
+ 184 0018 51A3     		adr	r3, .L3+16
+ 185 001a D3E90023 		ldrd	r2, [r3]
+ 186 001e CDE91223 		strd	r2, [sp, #72]
+  52:user_code/path_manager.c ****     double rad_latitude1 = ANGLE_TO_RAD(latitude1);
+ 187              		.loc 1 52 28
+ 188 0022 9DED067B 		vldr.64	d7, [sp, #24]
+ 189 0026 9FED4A6B 		vldr.64	d6, .L3
+ 190 002a 27EE066B 		vmul.f64	d6, d7, d6
+ 191              		.loc 1 52 12
+ 192 002e 9FED4A5B 		vldr.64	d5, .L3+8
+ 193 0032 86EE057B 		vdiv.f64	d7, d6, d5
+ 194 0036 8DED107B 		vstr.64	d7, [sp, #64]
+  53:user_code/path_manager.c ****     double rad_latitude2 = ANGLE_TO_RAD(latitude2);
+ 195              		.loc 1 53 28
+ 196 003a 9DED027B 		vldr.64	d7, [sp, #8]
+ 197 003e 9FED446B 		vldr.64	d6, .L3
+ 198 0042 27EE066B 		vmul.f64	d6, d7, d6
+ 199              		.loc 1 53 12
+ 200 0046 9FED445B 		vldr.64	d5, .L3+8
+ 201 004a 86EE057B 		vdiv.f64	d7, d6, d5
+ 202 004e 8DED0E7B 		vstr.64	d7, [sp, #56]
+  54:user_code/path_manager.c ****     double a = rad_latitude1 - rad_latitude2;
+ 203              		.loc 1 54 12
+ 204 0052 9DED106B 		vldr.64	d6, [sp, #64]
+ 205 0056 9DED0E7B 		vldr.64	d7, [sp, #56]
+ 206 005a 36EE477B 		vsub.f64	d7, d6, d7
+ 207 005e 8DED0C7B 		vstr.64	d7, [sp, #48]
+  55:user_code/path_manager.c ****     double b = ANGLE_TO_RAD(longitude1) - ANGLE_TO_RAD(longitude2);
+ 208              		.loc 1 55 16
+ 209 0062 9DED047B 		vldr.64	d7, [sp, #16]
+ 210 0066 9FED3A6B 		vldr.64	d6, .L3
+ 211 006a 27EE067B 		vmul.f64	d7, d7, d6
+ 212 006e 9FED3A5B 		vldr.64	d5, .L3+8
+ 213 0072 87EE056B 		vdiv.f64	d6, d7, d5
+ 214              		.loc 1 55 43
+ 215 0076 9DED007B 		vldr.64	d7, [sp]
+ 216 007a 9FED355B 		vldr.64	d5, .L3
+ 217 007e 27EE055B 		vmul.f64	d5, d7, d5
+ 218 0082 9FED354B 		vldr.64	d4, .L3+8
+ 219 0086 85EE047B 		vdiv.f64	d7, d5, d4
+ 220              		.loc 1 55 12
+ 221 008a 36EE477B 		vsub.f64	d7, d6, d7
+ 222 008e 8DED0A7B 		vstr.64	d7, [sp, #40]
+  56:user_code/path_manager.c ****     double distance = 2 * asin(sqrt(pow(sin(a / 2), 2) + cos(rad_latitude1) * cos(rad_latitude2) * 
+ 223              		.loc 1 56 37
+ 224 0092 9DED0C7B 		vldr.64	d7, [sp, #48]
+ 225 0096 B0EE005B 		vmov.f64	d5, #2.0e+0
+ 226 009a 87EE056B 		vdiv.f64	d6, d7, d5
+ 227 009e B0EE460B 		vmov.f64	d0, d6
+ 228 00a2 FFF7FEFF 		bl	sin
+ 229 00a6 B0EE407B 		vmov.f64	d7, d0
+ 230 00aa B0EE001B 		vmov.f64	d1, #2.0e+0
+ 231 00ae B0EE470B 		vmov.f64	d0, d7
+ 232 00b2 FFF7FEFF 		bl	pow
+ 233 00b6 B0EE409B 		vmov.f64	d9, d0
+ 234              		.loc 1 56 58
+ 235 00ba 9DED100B 		vldr.64	d0, [sp, #64]
+ 236 00be FFF7FEFF 		bl	cos
+ 237 00c2 B0EE408B 		vmov.f64	d8, d0
+ 238              		.loc 1 56 79
+ 239 00c6 9DED0E0B 		vldr.64	d0, [sp, #56]
+ 240 00ca FFF7FEFF 		bl	cos
+ 241 00ce B0EE407B 		vmov.f64	d7, d0
+ 242              		.loc 1 56 77
+ 243 00d2 28EE078B 		vmul.f64	d8, d8, d7
+ 244              		.loc 1 56 100
+ 245 00d6 9DED0A7B 		vldr.64	d7, [sp, #40]
+ 246 00da B0EE005B 		vmov.f64	d5, #2.0e+0
+ 247 00de 87EE056B 		vdiv.f64	d6, d7, d5
+ 248 00e2 B0EE460B 		vmov.f64	d0, d6
+ 249 00e6 FFF7FEFF 		bl	sin
+ 250 00ea B0EE407B 		vmov.f64	d7, d0
+ 251 00ee B0EE001B 		vmov.f64	d1, #2.0e+0
+ 252 00f2 B0EE470B 		vmov.f64	d0, d7
+ 253 00f6 FFF7FEFF 		bl	pow
+ 254 00fa B0EE407B 		vmov.f64	d7, d0
+ 255              		.loc 1 56 98
+ 256 00fe 28EE077B 		vmul.f64	d7, d8, d7
+ 257              		.loc 1 56 27
+ 258 0102 39EE077B 		vadd.f64	d7, d9, d7
+ 259 0106 B0EE470B 		vmov.f64	d0, d7
+ 260 010a FFF7FEFF 		bl	sqrt
+ 261 010e B0EE407B 		vmov.f64	d7, d0
+ 262 0112 B0EE470B 		vmov.f64	d0, d7
+ 263 0116 FFF7FEFF 		bl	asin
+ 264 011a B0EE407B 		vmov.f64	d7, d0
+ 265              		.loc 1 56 12
+ 266 011e 37EE077B 		vadd.f64	d7, d7, d7
+ 267 0122 8DED087B 		vstr.64	d7, [sp, #32]
+  57:user_code/path_manager.c ****     distance = distance * EARTH_RADIUS;
+ 268              		.loc 1 57 14
+ 269 0126 9DED086B 		vldr.64	d6, [sp, #32]
+ 270 012a 9DED127B 		vldr.64	d7, [sp, #72]
+ 271 012e 26EE077B 		vmul.f64	d7, d6, d7
+ 272 0132 8DED087B 		vstr.64	d7, [sp, #32]
+  58:user_code/path_manager.c ****     return distance;
+ 273              		.loc 1 58 12
+ 274 0136 DDE90823 		ldrd	r2, [sp, #32]
+ 275 013a 43EC172B 		vmov	d7, r2, r3
+  59:user_code/path_manager.c **** }
+ 276              		.loc 1 59 1
+ 277 013e B0EE470B 		vmov.f64	d0, d7
+ 278 0142 15B0     		add	sp, sp, #84
+ 279              		.cfi_def_cfa_offset 20
+ 280              		@ sp needed
+ 281 0144 BDEC048B 		vldm	sp!, {d8-d9}
+ 282              		.cfi_restore 82
+ 283              		.cfi_restore 83
+ 284              		.cfi_restore 80
+ 285              		.cfi_restore 81
+ 286              		.cfi_def_cfa_offset 4
+ 287 0148 5DF804FB 		ldr	pc, [sp], #4
+ 288              	.L4:
+ 289 014c AFF30080 		.align	3
+ 290              	.L3:
+ 291 0150 282D4454 		.word	1413754152
+ 292 0154 FB210940 		.word	1074340347
+ 293 0158 00000000 		.word	0
+ 294 015c 00806640 		.word	1080459264
+ 295 0160 00000040 		.word	1073741824
+ 296 0164 A6545841 		.word	1096307878
+ 297              		.cfi_endproc
+ 298              	.LFE482:
+ 300              		.section	.text.get_two_points_azimuth,"ax",%progbits
+ 301              		.align	1
+ 302              		.p2align 4,,15
+ 303              		.global	get_two_points_azimuth
+ 304              		.syntax unified
+ 305              		.thumb
+ 306              		.thumb_func
+ 308              	get_two_points_azimuth:
+ 309              	.LFB483:
+  60:user_code/path_manager.c **** double get_two_points_azimuth (double latitude1, double longitude1, double latitude2, double longit
+  61:user_code/path_manager.c **** {
+ 310              		.loc 1 61 1
+ 311              		.cfi_startproc
+ 312              		@ args = 0, pretend = 0, frame = 88
+ 313              		@ frame_needed = 0, uses_anonymous_args = 0
+ 314 0000 00B5     		push	{lr}
+ 315              		.cfi_def_cfa_offset 4
+ 316              		.cfi_offset 14, -4
+ 317 0002 2DED048B 		vpush.64	{d8, d9}
+ 318              		.cfi_def_cfa_offset 20
+ 319              		.cfi_offset 80, -20
+ 320              		.cfi_offset 81, -16
+ 321              		.cfi_offset 82, -12
+ 322              		.cfi_offset 83, -8
+ 323 0006 97B0     		sub	sp, sp, #92
+ 324              		.cfi_def_cfa_offset 112
+ 325 0008 8DED060B 		vstr.64	d0, [sp, #24]
+ 326 000c 8DED041B 		vstr.64	d1, [sp, #16]
+ 327 0010 8DED022B 		vstr.64	d2, [sp, #8]
+ 328 0014 8DED003B 		vstr.64	d3, [sp]
+  62:user_code/path_manager.c ****     double lat1_rad = ANGLE_TO_RAD(latitude1);
+ 329              		.loc 1 62 23
+ 330 0018 9DED067B 		vldr.64	d7, [sp, #24]
+ 331 001c 9FED4E6B 		vldr.64	d6, .L12
+ 332 0020 27EE066B 		vmul.f64	d6, d7, d6
+ 333              		.loc 1 62 12
+ 334 0024 9FED4E5B 		vldr.64	d5, .L12+8
+ 335 0028 86EE057B 		vdiv.f64	d7, d6, d5
+ 336 002c 8DED147B 		vstr.64	d7, [sp, #80]
+  63:user_code/path_manager.c ****     double lon1_rad = ANGLE_TO_RAD(longitude1);
+ 337              		.loc 1 63 23
+ 338 0030 9DED047B 		vldr.64	d7, [sp, #16]
+ 339 0034 9FED486B 		vldr.64	d6, .L12
+ 340 0038 27EE066B 		vmul.f64	d6, d7, d6
+ 341              		.loc 1 63 12
+ 342 003c 9FED485B 		vldr.64	d5, .L12+8
+ 343 0040 86EE057B 		vdiv.f64	d7, d6, d5
+ 344 0044 8DED127B 		vstr.64	d7, [sp, #72]
+  64:user_code/path_manager.c ****     double lat2_rad = ANGLE_TO_RAD(latitude2);
+ 345              		.loc 1 64 23
+ 346 0048 9DED027B 		vldr.64	d7, [sp, #8]
+ 347 004c 9FED426B 		vldr.64	d6, .L12
+ 348 0050 27EE066B 		vmul.f64	d6, d7, d6
+ 349              		.loc 1 64 12
+ 350 0054 9FED425B 		vldr.64	d5, .L12+8
+ 351 0058 86EE057B 		vdiv.f64	d7, d6, d5
+ 352 005c 8DED107B 		vstr.64	d7, [sp, #64]
+  65:user_code/path_manager.c ****     double lon2_rad = ANGLE_TO_RAD(longitude2);
+ 353              		.loc 1 65 23
+ 354 0060 9DED007B 		vldr.64	d7, [sp]
+ 355 0064 9FED3C6B 		vldr.64	d6, .L12
+ 356 0068 27EE066B 		vmul.f64	d6, d7, d6
+ 357              		.loc 1 65 12
+ 358 006c 9FED3C5B 		vldr.64	d5, .L12+8
+ 359 0070 86EE057B 		vdiv.f64	d7, d6, d5
+ 360 0074 8DED0E7B 		vstr.64	d7, [sp, #56]
+  66:user_code/path_manager.c ****     double x = sin(lon2_rad - lon1_rad) * cos(lat2_rad);
+ 361              		.loc 1 66 16
+ 362 0078 9DED0E6B 		vldr.64	d6, [sp, #56]
+ 363 007c 9DED127B 		vldr.64	d7, [sp, #72]
+ 364 0080 36EE477B 		vsub.f64	d7, d6, d7
+ 365 0084 B0EE470B 		vmov.f64	d0, d7
+ 366 0088 FFF7FEFF 		bl	sin
+ 367 008c B0EE408B 		vmov.f64	d8, d0
+ 368              		.loc 1 66 43
+ 369 0090 9DED100B 		vldr.64	d0, [sp, #64]
+ 370 0094 FFF7FEFF 		bl	cos
+ 371 0098 B0EE407B 		vmov.f64	d7, d0
+ 372              		.loc 1 66 12
+ 373 009c 28EE077B 		vmul.f64	d7, d8, d7
+ 374 00a0 8DED0C7B 		vstr.64	d7, [sp, #48]
+  67:user_code/path_manager.c ****     double y = cos(lat1_rad) * sin(lat2_rad) - sin(lat1_rad) * cos(lat2_rad) * cos(lon2_rad - lon1_
+ 375              		.loc 1 67 16
+ 376 00a4 9DED140B 		vldr.64	d0, [sp, #80]
+ 377 00a8 FFF7FEFF 		bl	cos
+ 378 00ac B0EE408B 		vmov.f64	d8, d0
+ 379              		.loc 1 67 32
+ 380 00b0 9DED100B 		vldr.64	d0, [sp, #64]
+ 381 00b4 FFF7FEFF 		bl	sin
+ 382 00b8 B0EE407B 		vmov.f64	d7, d0
+ 383              		.loc 1 67 30
+ 384 00bc 28EE078B 		vmul.f64	d8, d8, d7
+ 385              		.loc 1 67 48
+ 386 00c0 9DED140B 		vldr.64	d0, [sp, #80]
+ 387 00c4 FFF7FEFF 		bl	sin
+ 388 00c8 B0EE409B 		vmov.f64	d9, d0
+ 389              		.loc 1 67 64
+ 390 00cc 9DED100B 		vldr.64	d0, [sp, #64]
+ 391 00d0 FFF7FEFF 		bl	cos
+ 392 00d4 B0EE407B 		vmov.f64	d7, d0
+ 393              		.loc 1 67 62
+ 394 00d8 29EE079B 		vmul.f64	d9, d9, d7
+ 395              		.loc 1 67 80
+ 396 00dc 9DED0E6B 		vldr.64	d6, [sp, #56]
+ 397 00e0 9DED127B 		vldr.64	d7, [sp, #72]
+ 398 00e4 36EE477B 		vsub.f64	d7, d6, d7
+ 399 00e8 B0EE470B 		vmov.f64	d0, d7
+ 400 00ec FFF7FEFF 		bl	cos
+ 401 00f0 B0EE407B 		vmov.f64	d7, d0
+ 402              		.loc 1 67 78
+ 403 00f4 29EE077B 		vmul.f64	d7, d9, d7
+ 404              		.loc 1 67 12
+ 405 00f8 38EE477B 		vsub.f64	d7, d8, d7
+ 406 00fc 8DED0A7B 		vstr.64	d7, [sp, #40]
+  68:user_code/path_manager.c ****     double angle = RAD_TO_ANGLE(atan2(x, y));
+ 407              		.loc 1 68 20
+ 408 0100 9DED0A1B 		vldr.64	d1, [sp, #40]
+ 409 0104 9DED0C0B 		vldr.64	d0, [sp, #48]
+ 410 0108 FFF7FEFF 		bl	atan2
+ 411 010c B0EE407B 		vmov.f64	d7, d0
+ 412 0110 9FED136B 		vldr.64	d6, .L12+8
+ 413 0114 27EE066B 		vmul.f64	d6, d7, d6
+ 414              		.loc 1 68 12
+ 415 0118 9FED0F5B 		vldr.64	d5, .L12
+ 416 011c 86EE057B 		vdiv.f64	d7, d6, d5
+ 417 0120 8DED087B 		vstr.64	d7, [sp, #32]
+  69:user_code/path_manager.c ****     return ((angle >= 0) ? angle : (angle + 360.0));
+ 418              		.loc 1 69 34
+ 419 0124 9DED087B 		vldr.64	d7, [sp, #32]
+ 420 0128 B5EEC07B 		vcmpe.f64	d7, #0
+ 421 012c F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 422 0130 02DB     		blt	.L11
+ 423              		.loc 1 69 34 is_stmt 0 discriminator 1
+ 424 0132 9DED087B 		vldr.64	d7, [sp, #32]
+ 425 0136 05E0     		b	.L9
+ 426              	.L11:
+ 427              		.loc 1 69 34 discriminator 2
+ 428 0138 9DED087B 		vldr.64	d7, [sp, #32]
+ 429 013c 9FED0A6B 		vldr.64	d6, .L12+16
+ 430 0140 37EE067B 		vadd.f64	d7, d7, d6
+ 431              	.L9:
+  70:user_code/path_manager.c **** }
+ 432              		.loc 1 70 1 is_stmt 1 discriminator 5
+ 433 0144 B0EE470B 		vmov.f64	d0, d7
+ 434 0148 17B0     		add	sp, sp, #92
+ 435              		.cfi_def_cfa_offset 20
+ 436              		@ sp needed
+ 437 014a BDEC048B 		vldm	sp!, {d8-d9}
+ 438              		.cfi_restore 82
+ 439              		.cfi_restore 83
+ 440              		.cfi_restore 80
+ 441              		.cfi_restore 81
+ 442              		.cfi_def_cfa_offset 4
+ 443 014e 5DF804FB 		ldr	pc, [sp], #4
+ 444              	.L13:
+ 445 0152 00BFAFF3 		.align	3
+ 445      0080
+ 446              	.L12:
+ 447 0158 282D4454 		.word	1413754152
+ 448 015c FB210940 		.word	1074340347
+ 449 0160 00000000 		.word	0
+ 450 0164 00806640 		.word	1080459264
+ 451 0168 00000000 		.word	0
+ 452 016c 00807640 		.word	1081507840
+ 453              		.cfi_endproc
+ 454              	.LFE483:
+ 456              		.section	.text.path_manager_init,"ax",%progbits
+ 457              		.align	1
+ 458              		.p2align 4,,15
+ 459              		.global	path_manager_init
+ 460              		.syntax unified
+ 461              		.thumb
+ 462              		.thumb_func
+ 464              	path_manager_init:
+ 465              	.LFB484:
+  71:user_code/path_manager.c **** 
+  72:user_code/path_manager.c **** // ================== 核心API函数实现 ==================
+  73:user_code/path_manager.c **** void path_manager_init(void)
+  74:user_code/path_manager.c **** {
+ 466              		.loc 1 74 1
+ 467              		.cfi_startproc
+ 468              		@ args = 0, pretend = 0, frame = 8
+ 469              		@ frame_needed = 0, uses_anonymous_args = 0
+ 470 0000 10B5     		push	{r4, lr}
+ 471              		.cfi_def_cfa_offset 8
+ 472              		.cfi_offset 4, -8
+ 473              		.cfi_offset 14, -4
+ 474 0002 82B0     		sub	sp, sp, #8
+ 475              		.cfi_def_cfa_offset 16
+  75:user_code/path_manager.c ****     if (g_is_initialized) return;
+ 476              		.loc 1 75 9
+ 477 0004 264B     		ldr	r3, .L20
+ 478 0006 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 479              		.loc 1 75 8
+ 480 0008 002B     		cmp	r3, #0
+ 481 000a 46D1     		bne	.L19
+  76:user_code/path_manager.c ****     if (TOTAL_WAYPOINTS < 2)
+  77:user_code/path_manager.c ****     {
+  78:user_code/path_manager.c ****         while(1); // 路径点少于2个，无法导航，死循环
+  79:user_code/path_manager.c ****     }
+  80:user_code/path_manager.c **** 
+  81:user_code/path_manager.c ****     // [AI-MOD] 在初始化时，重置任务完成状态和目标点索引
+  82:user_code/path_manager.c ****     g_mission_completed = false;
+ 482              		.loc 1 82 25
+ 483 000c 254B     		ldr	r3, .L20+4
+ 484 000e 0022     		movs	r2, #0
+ 485 0010 1A70     		strb	r2, [r3]
+  83:user_code/path_manager.c ****     g_target_waypoint_index = 1;
+ 486              		.loc 1 83 29
+ 487 0012 254B     		ldr	r3, .L20+8
+ 488 0014 0122     		movs	r2, #1
+ 489 0016 1A60     		str	r2, [r3]
+  84:user_code/path_manager.c **** 
+  85:user_code/path_manager.c ****     g_origin_gps = g_path_gps[0];
+ 490              		.loc 1 85 18
+ 491 0018 244A     		ldr	r2, .L20+12
+ 492 001a 254B     		ldr	r3, .L20+16
+ 493 001c 1046     		mov	r0, r2
+ 494 001e 1946     		mov	r1, r3
+ 495 0020 4823     		movs	r3, #72
+ 496 0022 1A46     		mov	r2, r3
+ 497 0024 FFF7FEFF 		bl	memcpy
+  86:user_code/path_manager.c ****     memset(g_path_local, 0, sizeof(g_path_local));
+ 498              		.loc 1 86 5
+ 499 0028 4FF48872 		mov	r2, #272
+ 500 002c 0021     		movs	r1, #0
+ 501 002e 2148     		ldr	r0, .L20+20
+ 502 0030 FFF7FEFF 		bl	memset
+ 503              	.LBB2:
+  87:user_code/path_manager.c ****     for (size_t i = 0; i < TOTAL_WAYPOINTS; ++i)
+ 504              		.loc 1 87 17
+ 505 0034 0023     		movs	r3, #0
+ 506 0036 0193     		str	r3, [sp, #4]
+ 507              		.loc 1 87 5
+ 508 0038 28E0     		b	.L17
+ 509              	.L18:
+  88:user_code/path_manager.c ****     {
+  89:user_code/path_manager.c ****         g_path_local[i] = path_manager_gps_to_local_xy(g_path_gps[i].longitude, g_path_gps[i].latit
+ 510              		.loc 1 89 27 discriminator 3
+ 511 003a 1D49     		ldr	r1, .L20+16
+ 512 003c 019A     		ldr	r2, [sp, #4]
+ 513 003e 1346     		mov	r3, r2
+ 514 0040 DB00     		lsls	r3, r3, #3
+ 515 0042 1344     		add	r3, r3, r2
+ 516 0044 DB00     		lsls	r3, r3, #3
+ 517 0046 0B44     		add	r3, r3, r1
+ 518 0048 2033     		adds	r3, r3, #32
+ 519 004a 93ED007B 		vldr.64	d7, [r3]
+ 520 004e 1849     		ldr	r1, .L20+16
+ 521 0050 019A     		ldr	r2, [sp, #4]
+ 522 0052 1346     		mov	r3, r2
+ 523 0054 DB00     		lsls	r3, r3, #3
+ 524 0056 1344     		add	r3, r3, r2
+ 525 0058 DB00     		lsls	r3, r3, #3
+ 526 005a 0B44     		add	r3, r3, r1
+ 527 005c 1833     		adds	r3, r3, #24
+ 528 005e 93ED006B 		vldr.64	d6, [r3]
+ 529 0062 144A     		ldr	r2, .L20+20
+ 530 0064 019B     		ldr	r3, [sp, #4]
+ 531 0066 1B01     		lsls	r3, r3, #4
+ 532 0068 D418     		adds	r4, r2, r3
+ 533 006a B0EE461B 		vmov.f64	d1, d6
+ 534 006e B0EE470B 		vmov.f64	d0, d7
+ 535 0072 FFF7FEFF 		bl	path_manager_gps_to_local_xy
+ 536 0076 B0EE406B 		vmov.f64	d6, d0
+ 537 007a B0EE417B 		vmov.f64	d7, d1
+ 538 007e 84ED006B 		vstr.64	d6, [r4]
+ 539 0082 84ED027B 		vstr.64	d7, [r4, #8]
+  87:user_code/path_manager.c ****     for (size_t i = 0; i < TOTAL_WAYPOINTS; ++i)
+ 540              		.loc 1 87 45 discriminator 3
+ 541 0086 019B     		ldr	r3, [sp, #4]
+ 542 0088 0133     		adds	r3, r3, #1
+ 543 008a 0193     		str	r3, [sp, #4]
+ 544              	.L17:
+  87:user_code/path_manager.c ****     for (size_t i = 0; i < TOTAL_WAYPOINTS; ++i)
+ 545              		.loc 1 87 5 discriminator 1
+ 546 008c 019B     		ldr	r3, [sp, #4]
+ 547 008e 102B     		cmp	r3, #16
+ 548 0090 D3D9     		bls	.L18
+ 549              	.LBE2:
+  90:user_code/path_manager.c ****     }
+  91:user_code/path_manager.c ****     g_is_initialized = true;
+ 550              		.loc 1 91 22
+ 551 0092 034B     		ldr	r3, .L20
+ 552 0094 0122     		movs	r2, #1
+ 553 0096 1A70     		strb	r2, [r3]
+ 554 0098 00E0     		b	.L14
+ 555              	.L19:
+  75:user_code/path_manager.c ****     if (TOTAL_WAYPOINTS < 2)
+ 556              		.loc 1 75 27
+ 557 009a 00BF     		nop
+ 558              	.L14:
+  92:user_code/path_manager.c **** }
+ 559              		.loc 1 92 1
+ 560 009c 02B0     		add	sp, sp, #8
+ 561              		.cfi_def_cfa_offset 8
+ 562              		@ sp needed
+ 563 009e 10BD     		pop	{r4, pc}
+ 564              	.L21:
+ 565              		.align	2
+ 566              	.L20:
+ 567 00a0 00000000 		.word	g_is_initialized
+ 568 00a4 00000000 		.word	g_mission_completed
+ 569 00a8 00000000 		.word	g_target_waypoint_index
+ 570 00ac 00000000 		.word	g_origin_gps
+ 571 00b0 00000000 		.word	g_path_gps
+ 572 00b4 00000000 		.word	g_path_local
+ 573              		.cfi_endproc
+ 574              	.LFE484:
+ 576              		.section	.text.path_manager_gps_to_local_xy,"ax",%progbits
+ 577              		.align	1
+ 578              		.p2align 4,,15
+ 579              		.global	path_manager_gps_to_local_xy
+ 580              		.syntax unified
+ 581              		.thumb
+ 582              		.thumb_func
+ 584              	path_manager_gps_to_local_xy:
+ 585              	.LFB485:
+  93:user_code/path_manager.c **** 
+  94:user_code/path_manager.c **** Point_t path_manager_gps_to_local_xy(double longitude, double latitude)
+  95:user_code/path_manager.c **** {
+ 586              		.loc 1 95 1
+ 587              		.cfi_startproc
+ 588              		@ args = 0, pretend = 0, frame = 88
+ 589              		@ frame_needed = 0, uses_anonymous_args = 0
+ 590 0000 10B5     		push	{r4, lr}
+ 591              		.cfi_def_cfa_offset 8
+ 592              		.cfi_offset 4, -8
+ 593              		.cfi_offset 14, -4
+ 594 0002 96B0     		sub	sp, sp, #88
+ 595              		.cfi_def_cfa_offset 96
+ 596 0004 8DED060B 		vstr.64	d0, [sp, #24]
+ 597 0008 8DED041B 		vstr.64	d1, [sp, #16]
+  96:user_code/path_manager.c ****     Point_t local_pos = {0.0, 0.0};
+ 598              		.loc 1 96 13
+ 599 000c 4FF00002 		mov	r2, #0
+ 600 0010 4FF00003 		mov	r3, #0
+ 601 0014 CDE90823 		strd	r2, [sp, #32]
+ 602 0018 4FF00002 		mov	r2, #0
+ 603 001c 4FF00003 		mov	r3, #0
+ 604 0020 CDE90A23 		strd	r2, [sp, #40]
+  97:user_code/path_manager.c **** 
+  98:user_code/path_manager.c ****     // [AI-MOD] 全局变量 g_is_initialized 在 path_manager_init 中被置为 true
+  99:user_code/path_manager.c ****     // 如果没有初始化，直接返回(0,0)
+ 100:user_code/path_manager.c ****     if (!g_is_initialized) return local_pos;
+ 605              		.loc 1 100 9
+ 606 0024 384B     		ldr	r3, .L26+16
+ 607 0026 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 608 0028 83F00103 		eor	r3, r3, #1
+ 609 002c DBB2     		uxtb	r3, r3
+ 610              		.loc 1 100 8
+ 611 002e 002B     		cmp	r3, #0
+ 612 0030 05D0     		beq	.L23
+ 613              		.loc 1 100 35 discriminator 1
+ 614 0032 0CAC     		add	r4, sp, #48
+ 615 0034 08AB     		add	r3, sp, #32
+ 616 0036 0FCB     		ldm	r3, {r0, r1, r2, r3}
+ 617 0038 84E80F00 		stm	r4, {r0, r1, r2, r3}
+ 618 003c 4CE0     		b	.L25
+ 619              	.L23:
+ 101:user_code/path_manager.c **** 
+ 102:user_code/path_manager.c ****     // 1. 计算当前点到原点的直线距离 (单位: 米)
+ 103:user_code/path_manager.c ****     double distance = get_two_points_distance(g_origin_gps.latitude, g_origin_gps.longitude, latitu
+ 620              		.loc 1 103 23
+ 621 003e 334B     		ldr	r3, .L26+20
+ 622 0040 93ED067B 		vldr.64	d7, [r3, #24]
+ 623 0044 314B     		ldr	r3, .L26+20
+ 624 0046 93ED086B 		vldr.64	d6, [r3, #32]
+ 625 004a 9DED063B 		vldr.64	d3, [sp, #24]
+ 626 004e 9DED042B 		vldr.64	d2, [sp, #16]
+ 627 0052 B0EE461B 		vmov.f64	d1, d6
+ 628 0056 B0EE470B 		vmov.f64	d0, d7
+ 629 005a FFF7FEFF 		bl	get_two_points_distance
+ 630 005e 8DED140B 		vstr.64	d0, [sp, #80]
+ 104:user_code/path_manager.c **** 
+ 105:user_code/path_manager.c ****     // 2. 计算当前点相对于原点的方位角 (以正北为0, 顺时针, 0-360度)
+ 106:user_code/path_manager.c ****     double azimuth_deg = get_two_points_azimuth(g_origin_gps.latitude, g_origin_gps.longitude, lati
+ 631              		.loc 1 106 26
+ 632 0062 2A4B     		ldr	r3, .L26+20
+ 633 0064 93ED067B 		vldr.64	d7, [r3, #24]
+ 634 0068 284B     		ldr	r3, .L26+20
+ 635 006a 93ED086B 		vldr.64	d6, [r3, #32]
+ 636 006e 9DED063B 		vldr.64	d3, [sp, #24]
+ 637 0072 9DED042B 		vldr.64	d2, [sp, #16]
+ 638 0076 B0EE461B 		vmov.f64	d1, d6
+ 639 007a B0EE470B 		vmov.f64	d0, d7
+ 640 007e FFF7FEFF 		bl	get_two_points_azimuth
+ 641 0082 8DED120B 		vstr.64	d0, [sp, #72]
+ 107:user_code/path_manager.c **** 
+ 108:user_code/path_manager.c ****     // 3. 将方位角转换为数学角度 (以正东为0, 逆时针为正, 弧度)
+ 109:user_code/path_manager.c ****     //    这个转换公式必须与 navigation.c 中对航向角的转换公式保持一致！
+ 110:user_code/path_manager.c ****     double azimuth_rad = (90.0 - azimuth_deg) * (3.1415926535 / 180.0);
+ 642              		.loc 1 110 32
+ 643 0086 9FED1C6B 		vldr.64	d6, .L26
+ 644 008a 9DED127B 		vldr.64	d7, [sp, #72]
+ 645 008e 36EE477B 		vsub.f64	d7, d6, d7
+ 646              		.loc 1 110 12
+ 647 0092 9FED1B6B 		vldr.64	d6, .L26+8
+ 648 0096 27EE067B 		vmul.f64	d7, d7, d6
+ 649 009a 8DED107B 		vstr.64	d7, [sp, #64]
+ 111:user_code/path_manager.c **** 
+ 112:user_code/path_manager.c ****     // 4. 使用三角函数将极坐标 (distance, azimuth_rad) 转换为笛卡尔坐标 (x, y)
+ 113:user_code/path_manager.c ****     local_pos.x = distance * cos(azimuth_rad);
+ 650              		.loc 1 113 30
+ 651 009e 9DED100B 		vldr.64	d0, [sp, #64]
+ 652 00a2 FFF7FEFF 		bl	cos
+ 653 00a6 B0EE406B 		vmov.f64	d6, d0
+ 654              		.loc 1 113 28
+ 655 00aa 9DED147B 		vldr.64	d7, [sp, #80]
+ 656 00ae 26EE077B 		vmul.f64	d7, d6, d7
+ 657              		.loc 1 113 17
+ 658 00b2 8DED087B 		vstr.64	d7, [sp, #32]
+ 114:user_code/path_manager.c ****     local_pos.y = distance * sin(azimuth_rad);
+ 659              		.loc 1 114 30
+ 660 00b6 9DED100B 		vldr.64	d0, [sp, #64]
+ 661 00ba FFF7FEFF 		bl	sin
+ 662 00be B0EE406B 		vmov.f64	d6, d0
+ 663              		.loc 1 114 28
+ 664 00c2 9DED147B 		vldr.64	d7, [sp, #80]
+ 665 00c6 26EE077B 		vmul.f64	d7, d6, d7
+ 666              		.loc 1 114 17
+ 667 00ca 8DED0A7B 		vstr.64	d7, [sp, #40]
+ 115:user_code/path_manager.c **** 
+ 116:user_code/path_manager.c ****     return local_pos;
+ 668              		.loc 1 116 12
+ 669 00ce 0CAC     		add	r4, sp, #48
+ 670 00d0 08AB     		add	r3, sp, #32
+ 671 00d2 0FCB     		ldm	r3, {r0, r1, r2, r3}
+ 672 00d4 84E80F00 		stm	r4, {r0, r1, r2, r3}
+ 673              	.L25:
+ 117:user_code/path_manager.c **** }
+ 674              		.loc 1 117 1 discriminator 1
+ 675 00d8 DDE90C01 		ldrd	r0, [sp, #48]
+ 676 00dc DDE90E23 		ldrd	r2, [sp, #56]
+ 677 00e0 41EC160B 		vmov	d6, r0, r1
+ 678 00e4 43EC172B 		vmov	d7, r2, r3
+ 679 00e8 B0EE460B 		vmov.f64	d0, d6
+ 680 00ec B0EE471B 		vmov.f64	d1, d7
+ 681 00f0 16B0     		add	sp, sp, #88
+ 682              		.cfi_def_cfa_offset 8
+ 683              		@ sp needed
+ 684 00f2 10BD     		pop	{r4, pc}
+ 685              	.L27:
+ 686 00f4 AFF30080 		.align	3
+ 687              	.L26:
+ 688 00f8 00000000 		.word	0
+ 689 00fc 00805640 		.word	1079410688
+ 690 0100 916B50A2 		.word	-1571787887
+ 691 0104 46DF913F 		.word	1066524486
+ 692 0108 00000000 		.word	g_is_initialized
+ 693 010c 00000000 		.word	g_origin_gps
+ 694              		.cfi_endproc
+ 695              	.LFE485:
+ 697              		.section	.rodata
+ 698              		.align	2
+ 699              	.LC0:
+ 700 0000 4D697373 		.ascii	"Mission Completed: Reached final waypoint.\015\000"
+ 700      696F6E20 
+ 700      436F6D70 
+ 700      6C657465 
+ 700      643A2052 
+ 701              		.section	.text.path_manager_update_target_waypoint,"ax",%progbits
+ 702              		.align	1
+ 703              		.p2align 4,,15
+ 704              		.global	path_manager_update_target_waypoint
+ 705              		.syntax unified
+ 706              		.thumb
+ 707              		.thumb_func
+ 709              	path_manager_update_target_waypoint:
+ 710              	.LFB486:
+ 118:user_code/path_manager.c **** 
+ 119:user_code/path_manager.c **** /**
+ 120:user_code/path_manager.c ****  * @brief  根据车辆当前位置，更新目标航点
+ 121:user_code/path_manager.c ****  * @note   [AI-MOD] 增加了对任务完成状态的判断和设置。
+ 122:user_code/path_manager.c ****  */
+ 123:user_code/path_manager.c **** bool path_manager_update_target_waypoint(Point_t current_pos_xy)
+ 124:user_code/path_manager.c **** {
+ 711              		.loc 1 124 1
+ 712              		.cfi_startproc
+ 713              		@ args = 0, pretend = 0, frame = 144
+ 714              		@ frame_needed = 0, uses_anonymous_args = 0
+ 715 0000 10B5     		push	{r4, lr}
+ 716              		.cfi_def_cfa_offset 8
+ 717              		.cfi_offset 4, -8
+ 718              		.cfi_offset 14, -4
+ 719 0002 A4B0     		sub	sp, sp, #144
+ 720              		.cfi_def_cfa_offset 152
+ 721 0004 B0EE406B 		vmov.f64	d6, d0
+ 722 0008 B0EE417B 		vmov.f64	d7, d1
+ 723 000c 8DED006B 		vstr.64	d6, [sp]
+ 724 0010 8DED027B 		vstr.64	d7, [sp, #8]
+ 125:user_code/path_manager.c ****     // 如果未初始化或任务已经完成，则直接返回，不再更新航点
+ 126:user_code/path_manager.c ****     if (!g_is_initialized || g_mission_completed)
+ 725              		.loc 1 126 9
+ 726 0014 744B     		ldr	r3, .L48+8
+ 727 0016 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 728 0018 83F00103 		eor	r3, r3, #1
+ 729 001c DBB2     		uxtb	r3, r3
+ 730              		.loc 1 126 8
+ 731 001e 002B     		cmp	r3, #0
+ 732 0020 04D1     		bne	.L29
+ 733              		.loc 1 126 27 discriminator 1
+ 734 0022 724B     		ldr	r3, .L48+12
+ 735 0024 1B78     		ldrb	r3, [r3]
+ 736 0026 DBB2     		uxtb	r3, r3
+ 737 0028 002B     		cmp	r3, #0
+ 738 002a 01D0     		beq	.L30
+ 739              	.L29:
+ 127:user_code/path_manager.c ****     {
+ 128:user_code/path_manager.c ****         return false;
+ 740              		.loc 1 128 16
+ 741 002c 0023     		movs	r3, #0
+ 742 002e D1E0     		b	.L42
+ 743              	.L30:
+ 129:user_code/path_manager.c ****     }
+ 130:user_code/path_manager.c **** 
+ 131:user_code/path_manager.c ****     Point_t start_pos = g_path_local[g_target_waypoint_index - 1];
+ 744              		.loc 1 131 62
+ 745 0030 6F4B     		ldr	r3, .L48+16
+ 746 0032 1B68     		ldr	r3, [r3]
+ 747 0034 013B     		subs	r3, r3, #1
+ 748              		.loc 1 131 13
+ 749 0036 6F4A     		ldr	r2, .L48+20
+ 750 0038 1B01     		lsls	r3, r3, #4
+ 751 003a 1344     		add	r3, r3, r2
+ 752 003c 08AC     		add	r4, sp, #32
+ 753 003e 0FCB     		ldm	r3, {r0, r1, r2, r3}
+ 754 0040 84E80F00 		stm	r4, {r0, r1, r2, r3}
+ 132:user_code/path_manager.c ****     Point_t target_pos = g_path_local[g_target_waypoint_index];
+ 755              		.loc 1 132 38
+ 756 0044 6A4B     		ldr	r3, .L48+16
+ 757 0046 1B68     		ldr	r3, [r3]
+ 758              		.loc 1 132 13
+ 759 0048 6A4A     		ldr	r2, .L48+20
+ 760 004a 1B01     		lsls	r3, r3, #4
+ 761 004c 1344     		add	r3, r3, r2
+ 762 004e 04AC     		add	r4, sp, #16
+ 763 0050 0FCB     		ldm	r3, {r0, r1, r2, r3}
+ 764 0052 84E80F00 		stm	r4, {r0, r1, r2, r3}
+ 133:user_code/path_manager.c **** 
+ 134:user_code/path_manager.c ****     bool reached = false;
+ 765              		.loc 1 134 10
+ 766 0056 0023     		movs	r3, #0
+ 767 0058 8DF88F30 		strb	r3, [sp, #143]
+ 135:user_code/path_manager.c ****     // --- 切换逻辑判断 (此部分保持不变) ---
+ 136:user_code/path_manager.c ****     double ab_x = target_pos.x - start_pos.x;
+ 768              		.loc 1 136 29
+ 769 005c 9DED046B 		vldr.64	d6, [sp, #16]
+ 770              		.loc 1 136 43
+ 771 0060 9DED087B 		vldr.64	d7, [sp, #32]
+ 772              		.loc 1 136 12
+ 773 0064 36EE477B 		vsub.f64	d7, d6, d7
+ 774 0068 8DED207B 		vstr.64	d7, [sp, #128]
+ 137:user_code/path_manager.c ****     double ab_y = target_pos.y - start_pos.y;
+ 775              		.loc 1 137 29
+ 776 006c 9DED066B 		vldr.64	d6, [sp, #24]
+ 777              		.loc 1 137 43
+ 778 0070 9DED0A7B 		vldr.64	d7, [sp, #40]
+ 779              		.loc 1 137 12
+ 780 0074 36EE477B 		vsub.f64	d7, d6, d7
+ 781 0078 8DED1E7B 		vstr.64	d7, [sp, #120]
+ 138:user_code/path_manager.c ****     double ap_x = current_pos_xy.x - start_pos.x;
+ 782              		.loc 1 138 33
+ 783 007c 9DED006B 		vldr.64	d6, [sp]
+ 784              		.loc 1 138 47
+ 785 0080 9DED087B 		vldr.64	d7, [sp, #32]
+ 786              		.loc 1 138 12
+ 787 0084 36EE477B 		vsub.f64	d7, d6, d7
+ 788 0088 8DED1C7B 		vstr.64	d7, [sp, #112]
+ 139:user_code/path_manager.c ****     double ap_y = current_pos_xy.y - start_pos.y;
+ 789              		.loc 1 139 33
+ 790 008c 9DED026B 		vldr.64	d6, [sp, #8]
+ 791              		.loc 1 139 47
+ 792 0090 9DED0A7B 		vldr.64	d7, [sp, #40]
+ 793              		.loc 1 139 12
+ 794 0094 36EE477B 		vsub.f64	d7, d6, d7
+ 795 0098 8DED1A7B 		vstr.64	d7, [sp, #104]
+ 140:user_code/path_manager.c ****     double len_sq_ab = ab_x * ab_x + ab_y * ab_y;
+ 796              		.loc 1 140 29
+ 797 009c 9DED207B 		vldr.64	d7, [sp, #128]
+ 798 00a0 27EE076B 		vmul.f64	d6, d7, d7
+ 799              		.loc 1 140 43
+ 800 00a4 9DED1E7B 		vldr.64	d7, [sp, #120]
+ 801 00a8 27EE077B 		vmul.f64	d7, d7, d7
+ 802              		.loc 1 140 12
+ 803 00ac 36EE077B 		vadd.f64	d7, d6, d7
+ 804 00b0 8DED187B 		vstr.64	d7, [sp, #96]
+ 141:user_code/path_manager.c **** 
+ 142:user_code/path_manager.c ****     if (len_sq_ab < 0.000001) {
+ 805              		.loc 1 142 8
+ 806 00b4 9DED187B 		vldr.64	d7, [sp, #96]
+ 807 00b8 9FED496B 		vldr.64	d6, .L48
+ 808 00bc B4EEC67B 		vcmpe.f64	d7, d6
+ 809 00c0 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 810 00c4 18D5     		bpl	.L47
+ 811              	.LBB3:
+ 143:user_code/path_manager.c ****         double dist_sq = ap_x * ap_x + ap_y * ap_y;
+ 812              		.loc 1 143 31
+ 813 00c6 9DED1C7B 		vldr.64	d7, [sp, #112]
+ 814 00ca 27EE076B 		vmul.f64	d6, d7, d7
+ 815              		.loc 1 143 45
+ 816 00ce 9DED1A7B 		vldr.64	d7, [sp, #104]
+ 817 00d2 27EE077B 		vmul.f64	d7, d7, d7
+ 818              		.loc 1 143 16
+ 819 00d6 36EE077B 		vadd.f64	d7, d6, d7
+ 820 00da 8DED127B 		vstr.64	d7, [sp, #72]
+ 144:user_code/path_manager.c ****         if (dist_sq < (WAYPOINT_REACHED_THRESHOLD_M * WAYPOINT_REACHED_THRESHOLD_M)) {
+ 821              		.loc 1 144 12
+ 822 00de 9DED127B 		vldr.64	d7, [sp, #72]
+ 823 00e2 B5EE006B 		vmov.f64	d6, #2.5e-1
+ 824 00e6 B4EEC67B 		vcmpe.f64	d7, d6
+ 825 00ea F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 826 00ee 27D5     		bpl	.L34
+ 145:user_code/path_manager.c ****             reached = true;
+ 827              		.loc 1 145 21
+ 828 00f0 0123     		movs	r3, #1
+ 829 00f2 8DF88F30 		strb	r3, [sp, #143]
+ 830 00f6 23E0     		b	.L34
+ 831              	.L47:
+ 832              	.LBE3:
+ 833              	.LBB4:
+ 146:user_code/path_manager.c ****         }
+ 147:user_code/path_manager.c ****     } else {
+ 148:user_code/path_manager.c ****         double dot_product = ap_x * ab_x + ap_y * ab_y;
+ 834              		.loc 1 148 35
+ 835 00f8 9DED1C6B 		vldr.64	d6, [sp, #112]
+ 836 00fc 9DED207B 		vldr.64	d7, [sp, #128]
+ 837 0100 26EE076B 		vmul.f64	d6, d6, d7
+ 838              		.loc 1 148 49
+ 839 0104 9DED1A5B 		vldr.64	d5, [sp, #104]
+ 840 0108 9DED1E7B 		vldr.64	d7, [sp, #120]
+ 841 010c 25EE077B 		vmul.f64	d7, d5, d7
+ 842              		.loc 1 148 16
+ 843 0110 36EE077B 		vadd.f64	d7, d6, d7
+ 844 0114 8DED167B 		vstr.64	d7, [sp, #88]
+ 149:user_code/path_manager.c ****         double t = dot_product / len_sq_ab;
+ 845              		.loc 1 149 16
+ 846 0118 9DED165B 		vldr.64	d5, [sp, #88]
+ 847 011c 9DED186B 		vldr.64	d6, [sp, #96]
+ 848 0120 85EE067B 		vdiv.f64	d7, d5, d6
+ 849 0124 8DED147B 		vstr.64	d7, [sp, #80]
+ 150:user_code/path_manager.c ****         if (t > 1.0) {
+ 850              		.loc 1 150 12
+ 851 0128 9DED147B 		vldr.64	d7, [sp, #80]
+ 852 012c B7EE006B 		vmov.f64	d6, #1.0e+0
+ 853 0130 B4EEC67B 		vcmpe.f64	d7, d6
+ 854 0134 F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 855 0138 02DD     		ble	.L34
+ 151:user_code/path_manager.c ****             reached = true;
+ 856              		.loc 1 151 21
+ 857 013a 0123     		movs	r3, #1
+ 858 013c 8DF88F30 		strb	r3, [sp, #143]
+ 859              	.L34:
+ 860              	.LBE4:
+ 152:user_code/path_manager.c ****         }
+ 153:user_code/path_manager.c ****     }
+ 154:user_code/path_manager.c **** 
+ 155:user_code/path_manager.c ****     if (!reached) {
+ 861              		.loc 1 155 9
+ 862 0140 9DF88F30 		ldrb	r3, [sp, #143]
+ 863 0144 83F00103 		eor	r3, r3, #1
+ 864 0148 DBB2     		uxtb	r3, r3
+ 865              		.loc 1 155 8
+ 866 014a 002B     		cmp	r3, #0
+ 867 014c 2BD0     		beq	.L37
+ 868              	.LBB5:
+ 156:user_code/path_manager.c ****         double dx = target_pos.x - current_pos_xy.x;
+ 869              		.loc 1 156 31
+ 870 014e 9DED046B 		vldr.64	d6, [sp, #16]
+ 871              		.loc 1 156 50
+ 872 0152 9DED007B 		vldr.64	d7, [sp]
+ 873              		.loc 1 156 16
+ 874 0156 36EE477B 		vsub.f64	d7, d6, d7
+ 875 015a 8DED107B 		vstr.64	d7, [sp, #64]
+ 157:user_code/path_manager.c ****         double dy = target_pos.y - current_pos_xy.y;
+ 876              		.loc 1 157 31
+ 877 015e 9DED066B 		vldr.64	d6, [sp, #24]
+ 878              		.loc 1 157 50
+ 879 0162 9DED027B 		vldr.64	d7, [sp, #8]
+ 880              		.loc 1 157 16
+ 881 0166 36EE477B 		vsub.f64	d7, d6, d7
+ 882 016a 8DED0E7B 		vstr.64	d7, [sp, #56]
+ 158:user_code/path_manager.c ****         double distance_to_target = sqrt(dx * dx + dy * dy);
+ 883              		.loc 1 158 45
+ 884 016e 9DED107B 		vldr.64	d7, [sp, #64]
+ 885 0172 27EE076B 		vmul.f64	d6, d7, d7
+ 886              		.loc 1 158 55
+ 887 0176 9DED0E7B 		vldr.64	d7, [sp, #56]
+ 888 017a 27EE077B 		vmul.f64	d7, d7, d7
+ 889              		.loc 1 158 37
+ 890 017e 36EE077B 		vadd.f64	d7, d6, d7
+ 891 0182 B0EE470B 		vmov.f64	d0, d7
+ 892 0186 FFF7FEFF 		bl	sqrt
+ 893 018a 8DED0C0B 		vstr.64	d0, [sp, #48]
+ 159:user_code/path_manager.c ****         if (distance_to_target < WAYPOINT_REACHED_THRESHOLD_M) {
+ 894              		.loc 1 159 12
+ 895 018e 9DED0C7B 		vldr.64	d7, [sp, #48]
+ 896 0192 B6EE006B 		vmov.f64	d6, #5.0e-1
+ 897 0196 B4EEC67B 		vcmpe.f64	d7, d6
+ 898 019a F1EE10FA 		vmrs	APSR_nzcv, FPSCR
+ 899 019e 02D5     		bpl	.L37
+ 160:user_code/path_manager.c ****             reached = true;
+ 900              		.loc 1 160 21
+ 901 01a0 0123     		movs	r3, #1
+ 902 01a2 8DF88F30 		strb	r3, [sp, #143]
+ 903              	.L37:
+ 904              	.LBE5:
+ 161:user_code/path_manager.c ****         }
+ 162:user_code/path_manager.c ****     }
+ 163:user_code/path_manager.c **** 
+ 164:user_code/path_manager.c ****     // --- [AI-MOD] 修改后的执行切换逻辑 ---
+ 165:user_code/path_manager.c ****     if (reached)
+ 905              		.loc 1 165 8
+ 906 01a6 9DF88F30 		ldrb	r3, [sp, #143]	@ zero_extendqisi2
+ 907 01aa 002B     		cmp	r3, #0
+ 908 01ac 11D0     		beq	.L39
+ 166:user_code/path_manager.c ****     {
+ 167:user_code/path_manager.c ****         // 判断当前到达的是不是路径中的最后一个航点
+ 168:user_code/path_manager.c ****         if (g_target_waypoint_index == TOTAL_WAYPOINTS - 1)
+ 909              		.loc 1 168 37
+ 910 01ae 104B     		ldr	r3, .L48+16
+ 911 01b0 1B68     		ldr	r3, [r3]
+ 912              		.loc 1 168 12
+ 913 01b2 102B     		cmp	r3, #16
+ 914 01b4 06D1     		bne	.L40
+ 169:user_code/path_manager.c ****         {
+ 170:user_code/path_manager.c ****             // 如果是，则标记任务完成，并且不再增加索引
+ 171:user_code/path_manager.c ****             g_mission_completed = true;
+ 915              		.loc 1 171 33
+ 916 01b6 0D4B     		ldr	r3, .L48+12
+ 917 01b8 0122     		movs	r2, #1
+ 918 01ba 1A70     		strb	r2, [r3]
+ 172:user_code/path_manager.c ****             printf("Mission Completed: Reached final waypoint.\r\n");
+ 919              		.loc 1 172 13
+ 920 01bc 0E48     		ldr	r0, .L48+24
+ 921 01be FFF7FEFF 		bl	puts
+ 922 01c2 04E0     		b	.L41
+ 923              	.L40:
+ 173:user_code/path_manager.c ****         }
+ 174:user_code/path_manager.c ****         else
+ 175:user_code/path_manager.c ****         {
+ 176:user_code/path_manager.c ****             // 如果不是最后一个点，则正常切换到下一个目标
+ 177:user_code/path_manager.c ****             g_target_waypoint_index++;
+ 924              		.loc 1 177 36
+ 925 01c4 0A4B     		ldr	r3, .L48+16
+ 926 01c6 1B68     		ldr	r3, [r3]
+ 927 01c8 0133     		adds	r3, r3, #1
+ 928 01ca 094A     		ldr	r2, .L48+16
+ 929 01cc 1360     		str	r3, [r2]
+ 930              	.L41:
+ 178:user_code/path_manager.c ****         }
+ 179:user_code/path_manager.c ****         return true; // 目标点已更新或任务已完成
+ 931              		.loc 1 179 16
+ 932 01ce 0123     		movs	r3, #1
+ 933 01d0 00E0     		b	.L42
+ 934              	.L39:
+ 180:user_code/path_manager.c ****     }
+ 181:user_code/path_manager.c **** 
+ 182:user_code/path_manager.c ****     return false; // 目标点未变
+ 935              		.loc 1 182 12
+ 936 01d2 0023     		movs	r3, #0
+ 937              	.L42:
+ 183:user_code/path_manager.c **** }
+ 938              		.loc 1 183 1 discriminator 1
+ 939 01d4 1846     		mov	r0, r3
+ 940 01d6 24B0     		add	sp, sp, #144
+ 941              		.cfi_def_cfa_offset 8
+ 942              		@ sp needed
+ 943 01d8 10BD     		pop	{r4, pc}
+ 944              	.L49:
+ 945 01da 00BFAFF3 		.align	3
+ 945      0080
+ 946              	.L48:
+ 947 01e0 8DEDB5A0 		.word	-1598689907
+ 948 01e4 F7C6B03E 		.word	1051772663
+ 949 01e8 00000000 		.word	g_is_initialized
+ 950 01ec 00000000 		.word	g_mission_completed
+ 951 01f0 00000000 		.word	g_target_waypoint_index
+ 952 01f4 00000000 		.word	g_path_local
+ 953 01f8 00000000 		.word	.LC0
+ 954              		.cfi_endproc
+ 955              	.LFE486:
+ 957              		.section	.text.path_manager_get_target_waypoint,"ax",%progbits
+ 958              		.align	1
+ 959              		.p2align 4,,15
+ 960              		.global	path_manager_get_target_waypoint
+ 961              		.syntax unified
+ 962              		.thumb
+ 963              		.thumb_func
+ 965              	path_manager_get_target_waypoint:
+ 966              	.LFB487:
+ 184:user_code/path_manager.c **** 
+ 185:user_code/path_manager.c **** Point_t path_manager_get_target_waypoint(void)
+ 186:user_code/path_manager.c **** {
+ 967              		.loc 1 186 1
+ 968              		.cfi_startproc
+ 969              		@ args = 0, pretend = 0, frame = 56
+ 970              		@ frame_needed = 0, uses_anonymous_args = 0
+ 971              		@ link register save eliminated.
+ 972 0000 10B4     		push	{r4}
+ 973              		.cfi_def_cfa_offset 4
+ 974              		.cfi_offset 4, -4
+ 975 0002 8FB0     		sub	sp, sp, #60
+ 976              		.cfi_def_cfa_offset 64
+ 187:user_code/path_manager.c ****     if (!g_is_initialized) return (Point_t){0, 0};
+ 977              		.loc 1 187 9
+ 978 0004 194B     		ldr	r3, .L54
+ 979 0006 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 980 0008 83F00103 		eor	r3, r3, #1
+ 981 000c DBB2     		uxtb	r3, r3
+ 982              		.loc 1 187 8
+ 983 000e 002B     		cmp	r3, #0
+ 984 0010 0CD0     		beq	.L51
+ 985              	.LBB6:
+ 986              		.loc 1 187 35 discriminator 1
+ 987 0012 4FF00002 		mov	r2, #0
+ 988 0016 4FF00003 		mov	r3, #0
+ 989 001a CDE90823 		strd	r2, [sp, #32]
+ 990 001e 4FF00002 		mov	r2, #0
+ 991 0022 4FF00003 		mov	r3, #0
+ 992 0026 CDE90A23 		strd	r2, [sp, #40]
+ 993 002a 0FE0     		b	.L52
+ 994              	.L51:
+ 995              	.LBE6:
+ 188:user_code/path_manager.c ****     int index = g_target_waypoint_index;
+ 996              		.loc 1 188 9
+ 997 002c 104B     		ldr	r3, .L54+4
+ 998 002e 1B68     		ldr	r3, [r3]
+ 999 0030 0D93     		str	r3, [sp, #52]
+ 189:user_code/path_manager.c ****     if (index >= (int)TOTAL_WAYPOINTS)
+ 1000              		.loc 1 189 8
+ 1001 0032 0D9B     		ldr	r3, [sp, #52]
+ 1002 0034 102B     		cmp	r3, #16
+ 1003 0036 01DD     		ble	.L53
+ 190:user_code/path_manager.c ****     {
+ 191:user_code/path_manager.c ****         index = TOTAL_WAYPOINTS - 1;
+ 1004              		.loc 1 191 15
+ 1005 0038 1023     		movs	r3, #16
+ 1006 003a 0D93     		str	r3, [sp, #52]
+ 1007              	.L53:
+ 192:user_code/path_manager.c ****     }
+ 193:user_code/path_manager.c ****     return g_path_local[index];
+ 1008              		.loc 1 193 24
+ 1009 003c 0D4A     		ldr	r2, .L54+8
+ 1010 003e 0D9B     		ldr	r3, [sp, #52]
+ 1011 0040 1B01     		lsls	r3, r3, #4
+ 1012 0042 1344     		add	r3, r3, r2
+ 1013 0044 08AC     		add	r4, sp, #32
+ 1014 0046 0FCB     		ldm	r3, {r0, r1, r2, r3}
+ 1015 0048 84E80F00 		stm	r4, {r0, r1, r2, r3}
+ 1016              	.L52:
+ 194:user_code/path_manager.c **** }
+ 1017              		.loc 1 194 1 discriminator 1
+ 1018 004c DDE90801 		ldrd	r0, [sp, #32]
+ 1019 0050 DDE90A23 		ldrd	r2, [sp, #40]
+ 1020 0054 41EC160B 		vmov	d6, r0, r1
+ 1021 0058 43EC172B 		vmov	d7, r2, r3
+ 1022 005c B0EE460B 		vmov.f64	d0, d6
+ 1023 0060 B0EE471B 		vmov.f64	d1, d7
+ 1024 0064 0FB0     		add	sp, sp, #60
+ 1025              		.cfi_def_cfa_offset 4
+ 1026              		@ sp needed
+ 1027 0066 5DF8044B 		ldr	r4, [sp], #4
+ 1028              		.cfi_restore 4
+ 1029              		.cfi_def_cfa_offset 0
+ 1030 006a 7047     		bx	lr
+ 1031              	.L55:
+ 1032              		.align	2
+ 1033              	.L54:
+ 1034 006c 00000000 		.word	g_is_initialized
+ 1035 0070 00000000 		.word	g_target_waypoint_index
+ 1036 0074 00000000 		.word	g_path_local
+ 1037              		.cfi_endproc
+ 1038              	.LFE487:
+ 1040              		.section	.text.path_manager_get_start_waypoint,"ax",%progbits
+ 1041              		.align	1
+ 1042              		.p2align 4,,15
+ 1043              		.global	path_manager_get_start_waypoint
+ 1044              		.syntax unified
+ 1045              		.thumb
+ 1046              		.thumb_func
+ 1048              	path_manager_get_start_waypoint:
+ 1049              	.LFB488:
+ 195:user_code/path_manager.c **** 
+ 196:user_code/path_manager.c **** Point_t path_manager_get_start_waypoint(void)
+ 197:user_code/path_manager.c **** {
+ 1050              		.loc 1 197 1
+ 1051              		.cfi_startproc
+ 1052              		@ args = 0, pretend = 0, frame = 56
+ 1053              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1054              		@ link register save eliminated.
+ 1055 0000 10B4     		push	{r4}
+ 1056              		.cfi_def_cfa_offset 4
+ 1057              		.cfi_offset 4, -4
+ 1058 0002 8FB0     		sub	sp, sp, #60
+ 1059              		.cfi_def_cfa_offset 64
+ 198:user_code/path_manager.c ****     if (!g_is_initialized) return (Point_t){0, 0};
+ 1060              		.loc 1 198 9
+ 1061 0004 1A4B     		ldr	r3, .L60
+ 1062 0006 1B78     		ldrb	r3, [r3]	@ zero_extendqisi2
+ 1063 0008 83F00103 		eor	r3, r3, #1
+ 1064 000c DBB2     		uxtb	r3, r3
+ 1065              		.loc 1 198 8
+ 1066 000e 002B     		cmp	r3, #0
+ 1067 0010 0CD0     		beq	.L57
+ 1068              	.LBB7:
+ 1069              		.loc 1 198 35 discriminator 1
+ 1070 0012 4FF00002 		mov	r2, #0
+ 1071 0016 4FF00003 		mov	r3, #0
+ 1072 001a CDE90823 		strd	r2, [sp, #32]
+ 1073 001e 4FF00002 		mov	r2, #0
+ 1074 0022 4FF00003 		mov	r3, #0
+ 1075 0026 CDE90A23 		strd	r2, [sp, #40]
+ 1076 002a 10E0     		b	.L58
+ 1077              	.L57:
+ 1078              	.LBE7:
+ 199:user_code/path_manager.c ****     int index = g_target_waypoint_index - 1;
+ 1079              		.loc 1 199 41
+ 1080 002c 114B     		ldr	r3, .L60+4
+ 1081 002e 1B68     		ldr	r3, [r3]
+ 1082              		.loc 1 199 9
+ 1083 0030 013B     		subs	r3, r3, #1
+ 1084 0032 0D93     		str	r3, [sp, #52]
+ 200:user_code/path_manager.c ****     if (index < 0)
+ 1085              		.loc 1 200 8
+ 1086 0034 0D9B     		ldr	r3, [sp, #52]
+ 1087 0036 002B     		cmp	r3, #0
+ 1088 0038 01DA     		bge	.L59
+ 201:user_code/path_manager.c ****     {
+ 202:user_code/path_manager.c ****         index = 0;
+ 1089              		.loc 1 202 15
+ 1090 003a 0023     		movs	r3, #0
+ 1091 003c 0D93     		str	r3, [sp, #52]
+ 1092              	.L59:
+ 203:user_code/path_manager.c ****     }
+ 204:user_code/path_manager.c ****     return g_path_local[index];
+ 1093              		.loc 1 204 24
+ 1094 003e 0E4A     		ldr	r2, .L60+8
+ 1095 0040 0D9B     		ldr	r3, [sp, #52]
+ 1096 0042 1B01     		lsls	r3, r3, #4
+ 1097 0044 1344     		add	r3, r3, r2
+ 1098 0046 08AC     		add	r4, sp, #32
+ 1099 0048 0FCB     		ldm	r3, {r0, r1, r2, r3}
+ 1100 004a 84E80F00 		stm	r4, {r0, r1, r2, r3}
+ 1101              	.L58:
+ 205:user_code/path_manager.c **** }
+ 1102              		.loc 1 205 1 discriminator 1
+ 1103 004e DDE90801 		ldrd	r0, [sp, #32]
+ 1104 0052 DDE90A23 		ldrd	r2, [sp, #40]
+ 1105 0056 41EC160B 		vmov	d6, r0, r1
+ 1106 005a 43EC172B 		vmov	d7, r2, r3
+ 1107 005e B0EE460B 		vmov.f64	d0, d6
+ 1108 0062 B0EE471B 		vmov.f64	d1, d7
+ 1109 0066 0FB0     		add	sp, sp, #60
+ 1110              		.cfi_def_cfa_offset 4
+ 1111              		@ sp needed
+ 1112 0068 5DF8044B 		ldr	r4, [sp], #4
+ 1113              		.cfi_restore 4
+ 1114              		.cfi_def_cfa_offset 0
+ 1115 006c 7047     		bx	lr
+ 1116              	.L61:
+ 1117 006e 00BF     		.align	2
+ 1118              	.L60:
+ 1119 0070 00000000 		.word	g_is_initialized
+ 1120 0074 00000000 		.word	g_target_waypoint_index
+ 1121 0078 00000000 		.word	g_path_local
+ 1122              		.cfi_endproc
+ 1123              	.LFE488:
+ 1125              		.section	.text.path_manager_get_target_index,"ax",%progbits
+ 1126              		.align	1
+ 1127              		.p2align 4,,15
+ 1128              		.global	path_manager_get_target_index
+ 1129              		.syntax unified
+ 1130              		.thumb
+ 1131              		.thumb_func
+ 1133              	path_manager_get_target_index:
+ 1134              	.LFB489:
+ 206:user_code/path_manager.c **** 
+ 207:user_code/path_manager.c **** int path_manager_get_target_index(void)
+ 208:user_code/path_manager.c **** {
+ 1135              		.loc 1 208 1
+ 1136              		.cfi_startproc
+ 1137              		@ args = 0, pretend = 0, frame = 0
+ 1138              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1139              		@ link register save eliminated.
+ 209:user_code/path_manager.c ****     return g_target_waypoint_index;
+ 1140              		.loc 1 209 12
+ 1141 0000 014B     		ldr	r3, .L64
+ 1142 0002 1B68     		ldr	r3, [r3]
+ 210:user_code/path_manager.c **** }
+ 1143              		.loc 1 210 1
+ 1144 0004 1846     		mov	r0, r3
+ 1145 0006 7047     		bx	lr
+ 1146              	.L65:
+ 1147              		.align	2
+ 1148              	.L64:
+ 1149 0008 00000000 		.word	g_target_waypoint_index
+ 1150              		.cfi_endproc
+ 1151              	.LFE489:
+ 1153              		.section	.text.path_manager_is_mission_completed,"ax",%progbits
+ 1154              		.align	1
+ 1155              		.p2align 4,,15
+ 1156              		.global	path_manager_is_mission_completed
+ 1157              		.syntax unified
+ 1158              		.thumb
+ 1159              		.thumb_func
+ 1161              	path_manager_is_mission_completed:
+ 1162              	.LFB490:
+ 211:user_code/path_manager.c **** 
+ 212:user_code/path_manager.c **** // [AI-MOD] 新增API函数实现
+ 213:user_code/path_manager.c **** bool path_manager_is_mission_completed(void)
+ 214:user_code/path_manager.c **** {
+ 1163              		.loc 1 214 1
+ 1164              		.cfi_startproc
+ 1165              		@ args = 0, pretend = 0, frame = 0
+ 1166              		@ frame_needed = 0, uses_anonymous_args = 0
+ 1167              		@ link register save eliminated.
+ 215:user_code/path_manager.c ****     return g_mission_completed;
+ 1168              		.loc 1 215 12
+ 1169 0000 024B     		ldr	r3, .L68
+ 1170 0002 1B78     		ldrb	r3, [r3]
+ 1171 0004 DBB2     		uxtb	r3, r3
+ 216:user_code/path_manager.c **** }
+ 1172              		.loc 1 216 1
+ 1173 0006 1846     		mov	r0, r3
+ 1174 0008 7047     		bx	lr
+ 1175              	.L69:
+ 1176 000a 00BF     		.align	2
+ 1177              	.L68:
+ 1178 000c 00000000 		.word	g_mission_completed
+ 1179              		.cfi_endproc
+ 1180              	.LFE490:
+ 1182              		.text
+ 1183              	.Letext0:
+ 1184              		.file 2 "c:\\stellarstudio-7.1\\sdks\\tools-1.4.0\\toolchain\\arm\\mingw64_nt\\10.3-2021.10\\lib\\
+ 1185              		.file 3 "libraries/zf_common/zf_common_typedef.h"
+ 1186              		.file 4 "C:/StellarStudio-7.1/SDKS/StellarESDK-1.7.0/Modules/Platform/MCU/include/sr5e1/sr5e1xx.h"
+ 1187              		.file 5 "libraries/zf_driver/zf_driver_gpio.h"
+ 1188              		.file 6 "libraries/zf_driver/zf_driver_adc.h"
+ 1189              		.file 7 "libraries/zf_driver/zf_driver_can.h"
+ 1190              		.file 8 "libraries/zf_driver/zf_driver_encoder.h"
+ 1191              		.file 9 "libraries/zf_driver/zf_driver_exti.h"
+ 1192              		.file 10 "libraries/zf_driver/zf_driver_hrtim.h"
+ 1193              		.file 11 "libraries/zf_driver/zf_driver_pwm.h"
+ 1194              		.file 12 "libraries/zf_driver/zf_driver_spi.h"
+ 1195              		.file 13 "libraries/zf_driver/zf_driver_uart.h"
+ 1196              		.file 14 "libraries/zf_device/zf_device_imu_interface.h"
+ 1197              		.file 15 "libraries/zf_device/zf_device_wireless_interface.h"
+ 1198              		.file 16 "libraries/zf_device/zf_device_display_interface.h"
+ 1199              		.file 17 "libraries/zf_device/zf_device_gnss.h"
+ 1200              		.file 18 "user_code/path_manager.h"
+DEFINED SYMBOLS
+                            *ABS*:00000000 path_manager.c
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:19     .rodata.g_path_gps:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:22     .rodata.g_path_gps:00000000 g_path_gps
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:126    .bss.g_path_local:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:129    .bss.g_path_local:00000000 g_path_local
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:132    .bss.g_origin_gps:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:135    .bss.g_origin_gps:00000000 g_origin_gps
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:140    .bss.g_is_initialized:00000000 g_is_initialized
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:141    .bss.g_is_initialized:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:143    .data.g_target_waypoint_index:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:146    .data.g_target_waypoint_index:00000000 g_target_waypoint_index
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:151    .bss.g_mission_completed:00000000 g_mission_completed
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:152    .bss.g_mission_completed:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:154    .text.get_two_points_distance:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:161    .text.get_two_points_distance:00000000 get_two_points_distance
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:291    .text.get_two_points_distance:00000150 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:301    .text.get_two_points_azimuth:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:308    .text.get_two_points_azimuth:00000000 get_two_points_azimuth
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:447    .text.get_two_points_azimuth:00000158 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:457    .text.path_manager_init:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:464    .text.path_manager_init:00000000 path_manager_init
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:584    .text.path_manager_gps_to_local_xy:00000000 path_manager_gps_to_local_xy
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:567    .text.path_manager_init:000000a0 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:577    .text.path_manager_gps_to_local_xy:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:688    .text.path_manager_gps_to_local_xy:000000f8 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:698    .rodata:00000000 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:702    .text.path_manager_update_target_waypoint:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:709    .text.path_manager_update_target_waypoint:00000000 path_manager_update_target_waypoint
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:947    .text.path_manager_update_target_waypoint:000001e0 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:958    .text.path_manager_get_target_waypoint:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:965    .text.path_manager_get_target_waypoint:00000000 path_manager_get_target_waypoint
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1034   .text.path_manager_get_target_waypoint:0000006c $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1041   .text.path_manager_get_start_waypoint:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1048   .text.path_manager_get_start_waypoint:00000000 path_manager_get_start_waypoint
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1119   .text.path_manager_get_start_waypoint:00000070 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1126   .text.path_manager_get_target_index:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1133   .text.path_manager_get_target_index:00000000 path_manager_get_target_index
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1149   .text.path_manager_get_target_index:00000008 $d
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1154   .text.path_manager_is_mission_completed:00000000 $t
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1161   .text.path_manager_is_mission_completed:00000000 path_manager_is_mission_completed
+C:\Users\20766\AppData\Local\Temp\ccB59G6R.s:1178   .text.path_manager_is_mission_completed:0000000c $d
+                           .group:00000000 wm4.0.1ea29c7543256e0887205fa7f8c557c8
+                           .group:00000000 wm4._newlib_version.h.4.bfdf54b0af045d4a71376ae00f63a22c
+                           .group:00000000 wm4.newlib.h.18.1c9fedb6b3cd797cff253cc0fd593ef2
+                           .group:00000000 wm4.ieeefp.h.77.2bc94c1d1ed8b02df437510a04ac1e45
+                           .group:00000000 wm4.features.h.22.026edb2397769f4ae13f35900dbdb560
+                           .group:00000000 wm4.config.h.224.c701144a7b0518c6ee9b9b5465b79f81
+                           .group:00000000 wm4._ansi.h.31.de524f58584151836e90d8620a16f8e8
+                           .group:00000000 wm4.stdio.h.31.7c0e28c411445f3f9c5b11accf882760
+                           .group:00000000 wm4._default_types.h.6.959254cf5f09734ea7516c89e8bb21bd
+                           .group:00000000 wm4.stddef.h.181.c3f52a3b0f4c288bddb5dda1562858e2
+                           .group:00000000 wm4.cdefs.h.49.a54b2d5c07711bc7320a3fea9f12cb56
+                           .group:00000000 wm4.stddef.h.39.c161261b198ee3a963897077fd6fa59f
+                           .group:00000000 wm4.stdarg.h.34.3a23a216c0c293b3d2ea2e89281481e6
+                           .group:00000000 wm4._types.h.20.dd0d04dca3800a0d2a6129b87f3adbb2
+                           .group:00000000 wm4.stddef.h.155.3588ebfdd1e8c7ede80509bb9c3b8009
+                           .group:00000000 wm4._types.h.127.34941de1b2539d59d5cac00e0dd27a45
+                           .group:00000000 wm4.reent.h.17.e292bf8b0bec6c96e131a54347145a30
+                           .group:00000000 wm4.lock.h.2.1461d1fff82dffe8bfddc23307f6484f
+                           .group:00000000 wm4.reent.h.77.dcd6129ff07fe81bd5636db29abe53b2
+                           .group:00000000 wm4.types.h.40.8b6acba56cefbb11746718204edc8f5e
+                           .group:00000000 wm4._stdint.h.10.c24fa3af3bc1706662bb5593a907e841
+                           .group:00000000 wm4._endian.h.31.65a10590763c3dde1ac4a7f66d7d4891
+                           .group:00000000 wm4.endian.h.9.49f3a4695c1b61e8a0808de3c4a106cb
+                           .group:00000000 wm4._timeval.h.32.bec3221fa7a9bb0bdde696c9c57e47d2
+                           .group:00000000 wm4.timespec.h.41.d855182eb0e690443ab8651bcedca6e1
+                           .group:00000000 wm4.select.h.19.40cd3f2bfc456b193b790c2754690ebf
+                           .group:00000000 wm4.types.h.51.5571ec98f267d17d3c670b7a3ba33afa
+                           .group:00000000 wm4.sched.h.22.c60982713a5c428609783c78f9c78d95
+                           .group:00000000 wm4._pthreadtypes.h.36.fcee9961c35163dde6267ef772ad1972
+                           .group:00000000 wm4.stdio.h.2.4aa87247282eca6c8f36f9de33d8df1a
+                           .group:00000000 wm4.stdio.h.81.932d0c162786b883f622b8d05c120c78
+                           .group:00000000 wm4._intsup.h.10.48bafbb683905c4daa4565a85aeeb264
+                           .group:00000000 wm4.stdint.h.23.d53047a68f4a85177f80b422d52785ed
+                           .group:00000000 wm4.string.h.8.c4b8571ce60dff2817f43fec8b86aecd
+                           .group:00000000 wm4.stddef.h.155.ba788add86a0e365f264484f110c3c29
+                           .group:00000000 wm4.sr5e1xx.h.22.e5c808533cc52ed19fb0830cd7d98924
+                           .group:00000000 wm4.cmsis_version.h.32.0f826810625204eca22a19868bdc7586
+                           .group:00000000 wm4.core_cm7.h.66.8ab2de36917d6fcae18019067fda13e0
+                           .group:00000000 wm4.cmsis_gcc.h.26.498d0ad17a45fc9ef20fdc01caf02259
+                           .group:00000000 wm4.core_cm7.h.174.43edb295ecdaadad738f48ba6011ffad
+                           .group:00000000 wm4.mpu_armv7.h.32.83326921a797fa9d6f70449916b4b839
+                           .group:00000000 wm4.cachel1_armv7.h.32.abd77761a989e008b0c60891114a33c7
+                           .group:00000000 wm4.SR5E1_ADC.h.14.21608e6aff125ba995dd767d6d8dc311
+                           .group:00000000 wm4.SR5E1_CEM.h.14.01fe5742c8f1ae35b1f3af05932f702e
+                           .group:00000000 wm4.SR5E1_CMU.h.14.2617b38b159abe38028862394531e06d
+                           .group:00000000 wm4.SR5E1_COMP.h.14.4b6fdfe4f5f7fd9bedf3a99b98bdf4cd
+                           .group:00000000 wm4.SR5E1_CORDIC.h.14.354fbf7c9eaf6963d38eaa25cf28ffe8
+                           .group:00000000 wm4.SR5E1_CRC.h.14.c64d0f7767671ddb92e9ead0a1162100
+                           .group:00000000 wm4.SR5E1_DAC.h.14.8c26a0ff04b0cfeb55306cc3f22187b8
+                           .group:00000000 wm4.SR5E1_DBGMCU.h.14.427df893d53a8044654f017ba01c25ed
+                           .group:00000000 wm4.SR5E1_DMA.h.14.a7f9a92f844b40a86965798c2e64240b
+                           .group:00000000 wm4.SR5E1_DMAMUX.h.14.471b3b4dfd4d41515f1df49493698866
+                           .group:00000000 wm4.SR5E1_EXTI.h.14.a325ea3fe89cd84894660551c33241ea
+                           .group:00000000 wm4.SR5E1_FCCU.h.14.0ebf0f0f36e079d28613ad2c80e17e23
+                           .group:00000000 wm4.SR5E1_FDCAN.h.14.ac57101fad5dbc798bfb93f34c899de7
+                           .group:00000000 wm4.SR5E1_FLASH_REG_ITF.h.14.d23d1d44923f9b20b8c8fdb51d66aefd
+                           .group:00000000 wm4.SR5E1_GPIO.h.14.1c84071e130d7c64b62470ab0e18a1f1
+                           .group:00000000 wm4.SR5E1_HRTIM.h.24.03932387d2522e6bd5c772a4edaf2f5d
+                           .group:00000000 wm4.SR5E1_HSEM.h.14.cbe70eee519f01b16452c3f8c99d8df1
+                           .group:00000000 wm4.SR5E1_I2C.h.14.350ba3e0f4fd57828457efa80135c36c
+                           .group:00000000 wm4.SR5E1_IMA.h.14.62b7088985ab2b7ce9b030a02daa1f7d
+                           .group:00000000 wm4.SR5E1_IWDG.h.14.20b7c5f05cf7ae94464c360d7af3660d
+                           .group:00000000 wm4.SR5E1_MEMU.h.14.04bad7ae4c52ce334a4fc900aad2ae5b
+                           .group:00000000 wm4.SR5E1_NVM_CTRL.h.14.5f442617f0628d4f16258f211c614ef9
+                           .group:00000000 wm4.SR5E1_PLLDIG.h.14.bd87a8e6917eee17dae2f312c8e5fa53
+                           .group:00000000 wm4.SR5E1_PMC_DIG.h.14.54173b566c6656344766ec4ef46c9281
+                           .group:00000000 wm4.SR5E1_RCC.h.14.56734803c71534de286e793a53649740
+                           .group:00000000 wm4.SR5E1_RTC.h.14.47037cbc7d8175dbf2be1dc0bb955e3f
+                           .group:00000000 wm4.SR5E1_SD_ADC.h.14.552b97d0b8f3c1fd4df6d8964b2f1a80
+                           .group:00000000 wm4.SR5E1_SMPU.h.14.8ce5bb6d5d7c579cd725f492f46e9085
+                           .group:00000000 wm4.SR5E1_SPI.h.14.42d52112e540f85ade4d9135f8b87d72
+                           .group:00000000 wm4.SR5E1_SSCM.h.14.8e6a2ad0ce5fca422fc3d69939b6125b
+                           .group:00000000 wm4.SR5E1_SYSCFG.h.14.02b969490118ce4069914b5e94f7ca65
+                           .group:00000000 wm4.SR5E1_TDM.h.14.a40ed7928cad243a57fd233fccf01ad2
+                           .group:00000000 wm4.SR5E1_TIM.h.14.05b8efc5395873619642d61a4b0b5a54
+                           .group:00000000 wm4.SR5E1_UART.h.14.eec3ab82b02b3bdb3de500483675b83f
+                           .group:00000000 wm4.SR5E1_WWDG.h.14.59b45efc70e442cc6ef03702aad4ad88
+                           .group:00000000 wm4.stdbool.h.29.07dce69c3b78884144b7f7bd19483461
+                           .group:00000000 wm4.typedefs.h.36.07fe3956b4e751037cfee70edcd0b397
+                           .group:00000000 wm4.irq_numbers.h.38.6294b95aed1bf7b3a2cda0eed8ce8f57
+                           .group:00000000 wm4.regs.h.23.2ac145b4f57126d16daed5fbd86d99c6
+                           .group:00000000 wm4.stdarg.h.31.3fa7b8f6daaa31edd1696c08c77f2a73
+                           .group:00000000 wm4.stdlib.h.13.4ed386f5c1a80d71e72172885d946ef2
+                           .group:00000000 wm4.alloca.h.8.dfc0c703c47ec3e69746825b17d9e66d
+                           .group:00000000 wm4.stdlib.h.56.f4862cfbf4363a1db01842d5bdf72c18
+                           .group:00000000 wm4.zf_common_typedef.h.47.8c368673885c9d07221c267e15ab1069
+                           .group:00000000 wm4.zf_common_debug.h.33.6d362bbaa8a8ff23e6f5c0a30bf7361f
+                           .group:00000000 wm4.zf_common_fifo.h.33.e14e643902e26e4e65437b5b20e82793
+                           .group:00000000 wm4.zf_common_function.h.33.02bbfb055e8ee322bc4f8b14ea195da2
+                           .group:00000000 wm4.zf_common_memory.h.33.d43647290a4d62164ff2ec77cadb89d8
+                           .group:00000000 wm4.saradc.h.25.e5a70aef9ec4fddf35f2b7cc0c9cf1bc
+                           .group:00000000 wm4.gpio.h.25.d41a0c19fda8c2de42e666afb48ec15a
+                           .group:00000000 wm4.zf_driver_gpio.h.65.5a4d2084c62fed7c22fdca02e748c198
+                           .group:00000000 wm4.zf_driver_adc.h.64.349fb433626b42172b0e0fee038428ca
+                           .group:00000000 wm4.can.h.25.3cfccb6c630ada4f656cab597e231e58
+                           .group:00000000 wm4.dmamux.h.25.337aea179f6dbcc87c52aae26d38f76e
+                           .group:00000000 wm4.clock_cfg.h.24.0aed3cee9ecce947225a304181294191
+                           .group:00000000 wm4.clock.h.37.80236c5607fdd9eb9275e5111a4191c3
+                           .group:00000000 wm4.irq.h.37.78714f25754c8b09d1428599101f6cc7
+                           .group:00000000 wm4.dma.h.40.f77dd217a06ceba13a3cfdd4102a73c1
+                           .group:00000000 wm4.zf_driver_can.h.67.fd10d2fa867eb54a54d4b57027d73a60
+                           .group:00000000 wm4.tim.h.25.6e7ad96569e77a70a68b9b4cc59f54f2
+                           .group:00000000 wm4.zf_driver_timer.h.33.8df253b6990d9861816977209fb11e90
+                           .group:00000000 wm4.zf_driver_encoder.h.57.7e32999f25354fac086ca226b0c630d4
+                           .group:00000000 wm4.exti.h.25.21597c35d9630b0985ce88d2c41f4ea4
+                           .group:00000000 wm4.zf_driver_exti.h.59.1b02b8083e5295ef5baaf83905d59395
+                           .group:00000000 wm4.ssd_types.h.29.b861f4e6d39d333f931bfc05b964cb1c
+                           .group:00000000 wm4.ssd_C55.h.37.dad650468a97d71aff4dd65ca085590f
+                           .group:00000000 wm4.zf_driver_flash.h.59.db93fe574c35ea9e79030063fbb35a13
+                           .group:00000000 wm4.hrtim.h.25.1601aea9d4a0da1de8252dc444355251
+                           .group:00000000 wm4.zf_driver_hrtim.h.64.cd8d2bf3bf1c471ea59d9c61e4a721d7
+                           .group:00000000 wm4.zf_driver_interrupt.h.33.2c3660dcc36cb090bd75b8f180c14f27
+                           .group:00000000 wm4.zf_driver_pit.h.33.834ac720a62e09d5603a9557331e9049
+                           .group:00000000 wm4.zf_driver_pwm.h.33.7d80487064ca712231a453396685a551
+                           .group:00000000 wm4.zf_driver_rcc.h.33.4c228cf40a79e1b974b30d5a9a3a77a7
+                           .group:00000000 wm4.zf_driver_soft_iic.h.33.9067bd298084134f63c61c075f95fa2b
+                           .group:00000000 wm4.zf_driver_soft_spi.h.33.a938287c023905d97cafe56e4be63674
+                           .group:00000000 wm4.zf_driver_spi.h.62.950b1f52ed365034df2907601137b455
+                           .group:00000000 wm4.zf_driver_system.h.33.370922a9681b47d575d2c83d302a180b
+                           .group:00000000 wm4.bsp_uart.h.31.c709869491969cfdef8a75d6bfc161b7
+                           .group:00000000 wm4.zf_driver_uart.h.68.14c9cf719d9cd0f517e5a4bcb943af75
+                           .group:00000000 wm4.zf_device_imu_interface.h.40.344a2c93b973b58cee305ff406fc3e84
+                           .group:00000000 wm4.zf_device_imu660rb.h.37.b47c39afb47c89c2c82bd28e76457042
+                           .group:00000000 wm4.zf_device_imu963ra.h.37.e773f164af6f72dd1b0b6c1242bf99b4
+                           .group:00000000 wm4.zf_device_wireless_interface.h.40.da0a07f107014cb0888a26f281971a5b
+                           .group:00000000 wm4.zf_device_display_interface.h.79.d8df25e52245efbd97fd6415c8db0a72
+                           .group:00000000 wm4.zf_device_ips200.h.37.957fc5e8b291701a6f6b47207b045b77
+                           .group:00000000 wm4.math.h.13.b6595ad277a643a6127e1a4515a98f91
+                           .group:00000000 wm4.zf_device_gnss.h.66.39fe53860d2d190725612db126de8287
+                           .group:00000000 wm4.zf_device_key.h.45.b12f9096d8cc68f085b8fe9fe5b730db
+                           .group:00000000 wm4.zf_device_uart_receiver.h.43.9ac9496dcaa4780ef86d21fa439379b4
+
+UNDEFINED SYMBOLS
+sin
+pow
+cos
+sqrt
+asin
+atan2
+memcpy
+memset
+puts
